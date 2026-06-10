@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background: #f8f9fa;
+  color: #1a1a2e;
+}
+
+#root {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
