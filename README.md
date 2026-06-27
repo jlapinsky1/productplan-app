@@ -1,73 +1,61 @@
-# React + TypeScript + Vite
+# ProductPlan
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A product management platform for capturing ideas, planning roadmaps, tracking strategic objectives, and visualizing portfolio-level execution.
 
-Currently, two official plugins are available:
+## Modules
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+### Ideas (`/ideas`)
 
-## React Compiler
+- **Idea backlog** with table view showing title, status, tags, requester, votes, and priority score
+- **Filter by status:** All, Backlog, Planned, In Progress, Done
+- **Sort by:** Priority Score, Votes, or Date Added
+- **Weighted prioritization scoring** — rate each idea across five dimensions:
+  - _Benefit:_ Revenue Potential (3x), Customer Delight (2x), Strategic Value (2x)
+  - _Cost:_ Effort (2x), Risk (1x)
+  - Composite score (0–100) computed in real time with color-coded indicators (red/yellow/green)
+- **Detail panel** expands on selection to show description, requester, tags, and the interactive scoring board
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Roadmap (`/roadmap`)
 
-## Expanding the ESLint configuration
+- **Gantt-style timeline** with horizontal month-based scrolling and a "today" marker
+- **Theme & container hierarchy** — organize bars under themes (e.g., Core Platform, Customer Intelligence) and containers (e.g., Ticket Management, Agent Productivity)
+- **Collapsible themes** to show/hide groups of work
+- **Roadmap bars** with color coding, date-based positioning, and progress fill (% complete)
+- **Milestones** displayed as diamond markers on the timeline
+- **Bar detail panel** showing title, date range, description, progress, tags, and status
+- **Parked view** — a separate table of deferred initiatives that don't appear on the main timeline
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Strategy (`/strategy`)
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- **OKR framework** with company-level and team-level objectives
+- **Objective cards** showing title, description, RAG status (Red/Amber/Green), team, and a progress ring
+- **Key results** expandable under each objective with current/target values, unit formatting ($, %, #), and progress bars
+- **Composite progress** calculated as the average of key result completion percentages
+- **Linked roadmap items** referenced on each objective
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Portfolio (`/portfolio`)
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- **Three-level strategic timeline** visualizing the hierarchy: Objectives → Initiatives → Roadmap Bars
+- **Auto-spanning dates** — parent items derive their date range from child work
+- **Visual hierarchy** with distinct sizing and opacity per level
+- **Show/Hide Connections toggle** to display linkages between hierarchy levels
+- **RAG status legend** and hierarchy key
+
+## Tech Stack
+
+- React 19 + TypeScript
+- TanStack Router
+- Tailwind CSS 4
+- Lucide React (icons)
+- Vite
+
+## Getting Started
+
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Current State
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+This is a frontend prototype using mock data. There is no backend, authentication, or data persistence — all state lives client-side. Action buttons (Add Idea, Add Bar, New Objective, Add Key Result) are present in the UI but not yet wired to creation flows.
