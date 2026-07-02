@@ -1,9 +1,11 @@
 import { useState } from 'react'
-import { ThumbsUp, Plus, ChevronDown, Tag, ArrowRight } from 'lucide-react'
-import { useIdeas, usePriorityColumns } from '../../lib/hooks'
+import { ThumbsUp, Plus, ChevronDown, Tag, ArrowRight, X } from 'lucide-react'
+import { useIdeas, usePriorityColumns, useProducts } from '../../lib/hooks'
+import { updateIdeaTags } from '../../lib/api'
 import { computeScore } from './PrioritizationBoard'
 import { PrioritizationBoard } from './PrioritizationBoard'
 import type { Idea, IdeaStatus } from '../../models'
+import { useQueryClient } from '@tanstack/react-query'
 
 const STATUS_CONFIG: Record<IdeaStatus, { label: string; color: string; bg: string }> = {
   backlog: { label: 'Backlog', color: 'text-gray-600', bg: 'bg-gray-100' },
@@ -21,15 +23,76 @@ function StatusBadge({ status }: { status: IdeaStatus }) {
   )
 }
 
+function TagEditor({ idea }: { idea: Idea }) {
+  const [newTag, setNewTag] = useState('')
+  const queryClient = useQueryClient()
+
+  const removeTag = async (tag: string) => {
+    const updated = idea.tags.filter(t => t !== tag)
+    await updateIdeaTags(idea.id, updated)
+    queryClient.invalidateQueries({ queryKey: ['ideas'] })
+  }
+
+  const addTag = async () => {
+    const tag = newTag.trim().toLowerCase()
+    if (!tag || idea.tags.includes(tag)) return
+    const updated = [...idea.tags, tag]
+    await updateIdeaTags(idea.id, updated)
+    setNewTag('')
+    queryClient.invalidateQueries({ queryKey: ['ideas'] })
+  }
+
+  return (
+    <div>
+      <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Tags</div>
+      <div className="flex flex-wrap gap-1.5 mb-2">
+        {idea.tags.map(t => (
+          <span key={t} className="flex items-center gap-1 text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-md group">
+            <Tag size={9} />
+            {t}
+            <button
+              onClick={() => removeTag(t)}
+              className="text-gray-400 hover:text-red-500 ml-0.5"
+            >
+              <X size={10} />
+            </button>
+          </span>
+        ))}
+      </div>
+      <div className="flex gap-1.5">
+        <input
+          type="text"
+          value={newTag}
+          onChange={e => setNewTag(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && addTag()}
+          placeholder="Add tag…"
+          className="flex-1 text-xs border border-gray-200 rounded-md px-2 py-1 text-gray-700 focus:outline-none focus:border-indigo-300"
+        />
+        <button
+          onClick={addTag}
+          className="text-xs px-2 py-1 bg-indigo-50 text-indigo-600 rounded-md hover:bg-indigo-100 font-medium"
+        >
+          Add
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export function IdeasBoard() {
   const { data: ideas = [], isLoading } = useIdeas()
   const { data: priorityColumns = [] } = usePriorityColumns()
+  const { data: products = [] } = useProducts()
   const [selectedIdea, setSelectedIdea] = useState<Idea | null>(null)
   const [filterStatus, setFilterStatus] = useState<IdeaStatus | 'all'>('all')
+  const [filterProduct, setFilterProduct] = useState<string>('all')
   const [sortBy, setSortBy] = useState<'score' | 'votes' | 'date'>('score')
+
+  const productMap = new Map(products.map(p => [p.id, p.name]))
 
   const filtered = ideas
     .filter(i => filterStatus === 'all' || i.status === filterStatus)
+    .filter(i => filterProduct === 'all' || i.productId === filterProduct)
     .sort((a, b) => {
       if (sortBy === 'score') {
         return computeScore(b.scores, priorityColumns) - computeScore(a.scores, priorityColumns)
@@ -37,6 +100,9 @@ export function IdeasBoard() {
       if (sortBy === 'votes') return b.votes - a.votes
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     })
+
+  // Keep selectedIdea in sync with fresh data
+  const freshSelected = selectedIdea ? ideas.find(i => i.id === selectedIdea.id) ?? null : null
 
   if (isLoading) {
     return <div className="flex items-center justify-center h-full text-gray-400">Loading ideas…</div>
@@ -59,7 +125,7 @@ export function IdeasBoard() {
         </div>
 
         {/* Filters */}
-        <div className="px-6 py-3 bg-white border-b border-gray-100 flex items-center gap-4">
+        <div className="px-6 py-3 bg-white border-b border-gray-100 flex items-center gap-4 flex-wrap">
           <div className="flex items-center gap-2">
             <span className="text-xs text-gray-500 font-medium">Status:</span>
             <div className="flex gap-1">
@@ -79,6 +145,22 @@ export function IdeasBoard() {
               ))}
             </div>
           </div>
+
+          {products.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500 font-medium">Product:</span>
+              <select
+                value={filterProduct}
+                onChange={e => setFilterProduct(e.target.value)}
+                className="text-xs border border-gray-200 rounded-lg px-2 py-1 text-gray-700 bg-white"
+              >
+                <option value="all">All Products</option>
+                {products.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="ml-auto flex items-center gap-2">
             <span className="text-xs text-gray-500">Sort by:</span>
@@ -108,6 +190,7 @@ export function IdeasBoard() {
               <tr>
                 <th className="text-left text-xs font-semibold text-gray-500 px-6 py-3 w-10">#</th>
                 <th className="text-left text-xs font-semibold text-gray-500 px-4 py-3">Title</th>
+                <th className="text-left text-xs font-semibold text-gray-500 px-4 py-3">Product</th>
                 <th className="text-left text-xs font-semibold text-gray-500 px-4 py-3">Status</th>
                 <th className="text-left text-xs font-semibold text-gray-500 px-4 py-3">Tags</th>
                 <th className="text-left text-xs font-semibold text-gray-500 px-4 py-3">Requester</th>
@@ -119,7 +202,7 @@ export function IdeasBoard() {
             <tbody className="divide-y divide-gray-100">
               {filtered.map((idea, idx) => {
                 const score = computeScore(idea.scores, priorityColumns)
-                const isSelected = selectedIdea?.id === idea.id
+                const isSelected = freshSelected?.id === idea.id
                 return (
                   <tr
                     key={idea.id}
@@ -133,6 +216,11 @@ export function IdeasBoard() {
                     <td className="px-4 py-3">
                       <div className="font-medium text-sm text-gray-900">{idea.title}</div>
                       <div className="text-xs text-gray-400 mt-0.5 truncate max-w-xs">{idea.description}</div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                        {productMap.get(idea.productId ?? '') ?? '—'}
+                      </span>
                     </td>
                     <td className="px-4 py-3"><StatusBadge status={idea.status} /></td>
                     <td className="px-4 py-3">
@@ -185,11 +273,11 @@ export function IdeasBoard() {
       </div>
 
       {/* Right detail panel */}
-      {selectedIdea && (
+      {freshSelected && (
         <div className="w-80 border-l border-gray-200 bg-white overflow-y-auto flex-shrink-0">
           <div className="px-4 py-4 border-b border-gray-100">
             <div className="flex items-start justify-between">
-              <h2 className="text-sm font-semibold text-gray-900 leading-snug pr-2">{selectedIdea.title}</h2>
+              <h2 className="text-sm font-semibold text-gray-900 leading-snug pr-2">{freshSelected.title}</h2>
               <button
                 onClick={() => setSelectedIdea(null)}
                 className="text-gray-400 hover:text-gray-600 text-lg leading-none mt-0.5"
@@ -197,24 +285,32 @@ export function IdeasBoard() {
                 ×
               </button>
             </div>
-            <StatusBadge status={selectedIdea.status} />
+            <div className="flex items-center gap-2 mt-1">
+              <StatusBadge status={freshSelected.status} />
+              {freshSelected.productId && (
+                <span className="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                  {productMap.get(freshSelected.productId) ?? ''}
+                </span>
+              )}
+            </div>
           </div>
           <div className="p-4 space-y-4">
             <div>
               <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Description</div>
-              <p className="text-sm text-gray-600">{selectedIdea.description}</p>
+              <p className="text-sm text-gray-600">{freshSelected.description}</p>
             </div>
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
                 <div className="text-xs text-gray-400 mb-0.5">Requester</div>
-                <div className="font-medium text-gray-700">{selectedIdea.requester}</div>
+                <div className="font-medium text-gray-700">{freshSelected.requester}</div>
               </div>
               <div>
                 <div className="text-xs text-gray-400 mb-0.5">Votes</div>
-                <div className="font-medium text-gray-700">{selectedIdea.votes}</div>
+                <div className="font-medium text-gray-700">{freshSelected.votes}</div>
               </div>
             </div>
-            <PrioritizationBoard idea={selectedIdea} />
+            <TagEditor idea={freshSelected} />
+            <PrioritizationBoard idea={freshSelected} />
           </div>
         </div>
       )}

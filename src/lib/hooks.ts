@@ -1,11 +1,15 @@
 import { useQuery } from '@tanstack/react-query'
 import {
-  fetchIdeas, fetchPriorityColumns, fetchThemes,
+  fetchIdeas, fetchProducts, fetchPriorityColumns, fetchThemes,
   fetchRoadmapBars, fetchObjectives, fetchInitiatives,
 } from './api'
 
 export function useIdeas() {
   return useQuery({ queryKey: ['ideas'], queryFn: fetchIdeas })
+}
+
+export function useProducts() {
+  return useQuery({ queryKey: ['products'], queryFn: fetchProducts })
 }
 
 export function usePriorityColumns() {

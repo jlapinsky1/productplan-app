@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import type {
-  Idea, PriorityColumn, Theme, RoadmapBar,
+  Idea, Product, PriorityColumn, Theme, RoadmapBar,
   Objective, KeyResult, Initiative, IdeaScore,
 } from '../models'
 
@@ -38,11 +38,33 @@ export async function fetchIdeas(): Promise<Idea[]> {
     requester: i.requester ?? '',
     votes: i.votes ?? 0,
     tags: i.tags ?? [],
+    productId: i.product_id ?? undefined,
     linkedBarId: i.linked_bar_id ?? undefined,
     scores: scoreMap.get(i.id) ?? [],
     createdAt: i.created_at,
     updatedAt: i.updated_at,
   }))
+}
+
+// ---- Products ----
+
+export async function fetchProducts(): Promise<Product[]> {
+  const { data } = await supabase
+    .from('pp_products')
+    .select('id, name')
+    .eq('company_id', COMPANY_ID)
+    .order('name')
+
+  return (data ?? []).map(p => ({ id: p.id, name: p.name }))
+}
+
+// ---- Idea mutations ----
+
+export async function updateIdeaTags(ideaId: string, tags: string[]): Promise<void> {
+  await supabase
+    .from('pp_ideas')
+    .update({ tags })
+    .eq('id', ideaId)
 }
 
 // ---- Priority Columns ----

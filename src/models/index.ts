@@ -20,6 +20,11 @@ export interface IdeaScore {
   score: number // 1-5
 }
 
+export interface Product {
+  id: string
+  name: string
+}
+
 export interface Idea {
   id: string
   title: string
@@ -28,6 +33,7 @@ export interface Idea {
   requester: string
   votes: number
   tags: string[]
+  productId?: string
   linkedBarId?: string
   scores: IdeaScore[]
   createdAt: string
