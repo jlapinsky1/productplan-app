@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Plus, ChevronDown, ChevronRight } from 'lucide-react'
-import { OBJECTIVES } from '../../lib/mockData'
+import { useObjectives } from '../../lib/hooks'
 import type { Objective, KeyResult, RagStatus } from '../../models'
 
 const RAG_CONFIG: Record<RagStatus, { label: string; bg: string; dot: string; text: string }> = {
@@ -120,8 +120,13 @@ function ObjectiveCard({ obj }: { obj: Objective }) {
 }
 
 export function StrategyBoard() {
-  const company = OBJECTIVES.filter(o => o.scope === 'company')
-  const team = OBJECTIVES.filter(o => o.scope === 'team')
+  const { data: objectives = [], isLoading } = useObjectives()
+  const company = objectives.filter(o => o.scope === 'company')
+  const team = objectives.filter(o => o.scope === 'team')
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-full text-gray-400">Loading strategy…</div>
+  }
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -136,6 +141,12 @@ export function StrategyBoard() {
       </div>
 
       <div className="p-6 space-y-8 max-w-4xl">
+        {objectives.length === 0 && (
+          <div className="text-center text-gray-400 py-16">
+            <p className="text-sm">No objectives defined yet</p>
+          </div>
+        )}
+
         {company.length > 0 && (
           <section>
             <div className="flex items-center gap-2 mb-4">

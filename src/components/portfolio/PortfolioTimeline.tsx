@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { OBJECTIVES, INITIATIVES, ROADMAP_BARS } from '../../lib/mockData'
+import { useObjectives, useInitiatives, useRoadmapBars } from '../../lib/hooks'
 import type { RagStatus } from '../../models'
 
 const MONTH_WIDTH = 120
@@ -69,8 +69,28 @@ function TimeBar({ x, w, color, label, percent = 0, level }: TimeBarProps) {
 }
 
 export function PortfolioTimeline() {
+  const { data: objectives = [], isLoading: objLoading } = useObjectives()
+  const { data: initiatives = [], isLoading: initLoading } = useInitiatives()
+  const { data: roadmapBars = [], isLoading: barsLoading } = useRoadmapBars()
+
   const [showConnections, setShowConnections] = useState(false)
   const totalWidth = months.length * MONTH_WIDTH
+
+  if (objLoading || initLoading || barsLoading) {
+    return <div className="flex items-center justify-center h-full text-gray-400">Loading portfolio…</div>
+  }
+
+  if (objectives.length === 0) {
+    return (
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200 bg-white">
+          <h1 className="text-lg font-semibold text-gray-900">Strategic Portfolio</h1>
+          <p className="text-sm text-gray-500">Objectives → Initiatives → Roadmap bars</p>
+        </div>
+        <div className="flex items-center justify-center h-64 text-gray-400 text-sm">No objectives defined yet</div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -123,10 +143,10 @@ export function PortfolioTimeline() {
           </div>
 
           {/* Objective rows */}
-          {OBJECTIVES.map(obj => {
+          {objectives.map(obj => {
             const ragColor = RAG_COLORS[obj.ragStatus]
-            const initiatives = INITIATIVES.filter(i => i.objectiveId === obj.id)
-            const linkedBars = ROADMAP_BARS.filter(b => obj.linkedBarIds.includes(b.id) && !b.isParked)
+            const objInitiatives = initiatives.filter(i => i.objectiveId === obj.id)
+            const linkedBars = roadmapBars.filter(b => obj.linkedBarIds.includes(b.id) && !b.isParked)
 
             // derive objective span from linked bars
             const barDates = linkedBars
@@ -164,8 +184,8 @@ export function PortfolioTimeline() {
                 </div>
 
                 {/* Initiative rows */}
-                {initiatives.map(init => {
-                  const initBars = ROADMAP_BARS.filter(b => obj.linkedBarIds.includes(b.id) && !b.isParked)
+                {objInitiatives.map(init => {
+                  const initBars = roadmapBars.filter(b => obj.linkedBarIds.includes(b.id) && !b.isParked)
                   const initStart = initBars.length ? initBars.map(b => b.startDate).sort()[0] : '2026-06-15'
                   const initEnd = initBars.length ? initBars.map(b => b.endDate).sort().reverse()[0] : '2026-09-15'
 

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ThumbsUp, Plus, ChevronDown, Tag, ArrowRight } from 'lucide-react'
-import { IDEAS, PRIORITY_COLUMNS } from '../../lib/mockData'
+import { useIdeas, usePriorityColumns } from '../../lib/hooks'
 import { computeScore } from './PrioritizationBoard'
 import { PrioritizationBoard } from './PrioritizationBoard'
 import type { Idea, IdeaStatus } from '../../models'
@@ -22,7 +22,8 @@ function StatusBadge({ status }: { status: IdeaStatus }) {
 }
 
 export function IdeasBoard() {
-  const [ideas] = useState<Idea[]>(IDEAS)
+  const { data: ideas = [], isLoading } = useIdeas()
+  const { data: priorityColumns = [] } = usePriorityColumns()
   const [selectedIdea, setSelectedIdea] = useState<Idea | null>(null)
   const [filterStatus, setFilterStatus] = useState<IdeaStatus | 'all'>('all')
   const [sortBy, setSortBy] = useState<'score' | 'votes' | 'date'>('score')
@@ -31,11 +32,15 @@ export function IdeasBoard() {
     .filter(i => filterStatus === 'all' || i.status === filterStatus)
     .sort((a, b) => {
       if (sortBy === 'score') {
-        return computeScore(b.scores, PRIORITY_COLUMNS) - computeScore(a.scores, PRIORITY_COLUMNS)
+        return computeScore(b.scores, priorityColumns) - computeScore(a.scores, priorityColumns)
       }
       if (sortBy === 'votes') return b.votes - a.votes
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     })
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-full text-gray-400">Loading ideas…</div>
+  }
 
   return (
     <div className="flex h-full">
@@ -92,6 +97,12 @@ export function IdeasBoard() {
 
         {/* Table */}
         <div className="flex-1 overflow-y-auto">
+          {filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+              <p className="text-sm">No ideas yet</p>
+              <p className="text-xs mt-1">Capture ideas via Slack or click "Add Idea"</p>
+            </div>
+          ) : (
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200 sticky top-0">
               <tr>
@@ -107,7 +118,7 @@ export function IdeasBoard() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filtered.map((idea, idx) => {
-                const score = computeScore(idea.scores, PRIORITY_COLUMNS)
+                const score = computeScore(idea.scores, priorityColumns)
                 const isSelected = selectedIdea?.id === idea.id
                 return (
                   <tr
@@ -169,6 +180,7 @@ export function IdeasBoard() {
               })}
             </tbody>
           </table>
+          )}
         </div>
       </div>
 

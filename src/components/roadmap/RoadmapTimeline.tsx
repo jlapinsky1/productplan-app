@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { Plus, ChevronRight, ChevronDown } from 'lucide-react'
-import { THEMES, CONTAINERS, ROADMAP_BARS, MILESTONES } from '../../lib/mockData'
+import { useThemes, useRoadmapBars } from '../../lib/hooks'
 import type { RoadmapBar } from '../../models'
 
 const MONTH_WIDTH = 140 // px per month
@@ -121,6 +121,9 @@ function BarDetail({ bar, onClose }: BarDetailProps) {
 }
 
 export function RoadmapTimeline() {
+  const { data: themes = [], isLoading: themesLoading } = useThemes()
+  const { data: roadmapBars = [], isLoading: barsLoading } = useRoadmapBars()
+
   const [collapsedThemes, setCollapsedThemes] = useState<Set<string>>(new Set())
   const [selectedBar, setSelectedBar] = useState<RoadmapBar | null>(null)
   const [activeView, setActiveView] = useState<'timeline' | 'parked'>('timeline')
@@ -143,8 +146,15 @@ export function RoadmapTimeline() {
     })
   }
 
-  const parkedBars = ROADMAP_BARS.filter(b => b.isParked)
-  const activeBars = ROADMAP_BARS.filter(b => !b.isParked)
+  const parkedBars = roadmapBars.filter(b => b.isParked)
+  const activeBars = roadmapBars.filter(b => !b.isParked)
+
+  if (themesLoading || barsLoading) {
+    return <div className="flex items-center justify-center h-full text-gray-400">Loading roadmap…</div>
+  }
+
+  // Build a "today" line using the actual date
+  const todayStr = new Date().toISOString().slice(0, 10)
 
   return (
     <div className="flex h-full">
@@ -179,6 +189,9 @@ export function RoadmapTimeline() {
         {activeView === 'parked' ? (
           /* Parked table */
           <div className="flex-1 overflow-y-auto">
+            {parkedBars.length === 0 ? (
+              <div className="flex items-center justify-center h-64 text-gray-400 text-sm">No parked items</div>
+            ) : (
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200 sticky top-0">
                 <tr>
@@ -214,10 +227,14 @@ export function RoadmapTimeline() {
                 ))}
               </tbody>
             </table>
+            )}
           </div>
         ) : (
           /* Timeline */
           <div className="flex-1 overflow-auto" ref={scrollRef}>
+            {activeBars.length === 0 && themes.length === 0 ? (
+              <div className="flex items-center justify-center h-64 text-gray-400 text-sm">No roadmap items yet</div>
+            ) : (
             <div style={{ minWidth: LEFT_LABEL + totalWidth + 32 }}>
               {/* Month headers */}
               <div className="flex border-b border-gray-200 bg-gray-50 sticky top-0 z-10">
@@ -233,29 +250,15 @@ export function RoadmapTimeline() {
                 ))}
               </div>
 
-              {/* Milestones */}
+              {/* Today line placeholder row */}
               <div className="relative border-b border-gray-100" style={{ height: 24 }}>
                 <div className="flex-shrink-0 absolute left-0 top-0 bottom-0 border-r border-gray-200 bg-white flex items-center px-3 text-xs text-gray-400 font-medium" style={{ width: LEFT_LABEL }}>
-                  Milestones
+                  Timeline
                 </div>
                 <div className="absolute" style={{ left: LEFT_LABEL }}>
-                  {MILESTONES.map(ms => {
-                    const x = dateToX(ms.date, startMonth)
-                    return (
-                      <div
-                        key={ms.id}
-                        className="absolute flex flex-col items-center"
-                        style={{ left: x - 6, top: 2 }}
-                        title={`${ms.title} · ${ms.date}`}
-                      >
-                        <div className="w-3 h-3 rotate-45 border-2 border-white" style={{ background: ms.color }} />
-                        <span className="text-xs text-gray-500 whitespace-nowrap mt-0.5">{ms.title}</span>
-                      </div>
-                    )
-                  })}
                   {/* Today line */}
                   {(() => {
-                    const todayX = dateToX('2026-06-10', startMonth)
+                    const todayX = dateToX(todayStr, startMonth)
                     return (
                       <div
                         className="absolute top-0 w-px bg-red-400"
@@ -268,23 +271,10 @@ export function RoadmapTimeline() {
                 </div>
               </div>
 
-              {/* Themes + lanes */}
-              {THEMES.map(theme => {
+              {/* Themes + lanes — bars grouped by theme */}
+              {themes.map(theme => {
                 const collapsed = collapsedThemes.has(theme.id)
-                const themeContainers = CONTAINERS.filter(c => c.themeId === theme.id)
-                const rows: { containerId?: string; label: string; bars: RoadmapBar[] }[] = collapsed
-                  ? []
-                  : themeContainers.map(c => ({
-                      containerId: c.id,
-                      label: c.name,
-                      bars: activeBars.filter(b => b.containerId === c.id),
-                    }))
-
-                // themeHeight used by future collapse animation
-                void (collapsed ? 0 : rows.reduce((sum, row) => {
-                  const barRows = Math.max(1, row.bars.length)
-                  return sum + barRows * LANE_HEIGHT
-                }, 0))
+                const themeBars = activeBars.filter(b => b.themeId === theme.id)
 
                 return (
                   <div key={theme.id} className="border-b border-gray-200">
@@ -305,28 +295,21 @@ export function RoadmapTimeline() {
                       <div className="flex-1" />
                     </div>
 
-                    {/* Container rows */}
-                    {!collapsed && rows.map(row => {
-                      const rowBars = row.bars
-                      const rowHeight = Math.max(1, rowBars.length) * LANE_HEIGHT
-
-                      return (
-                        <div
-                          key={row.containerId}
-                          className="flex border-b border-gray-100 last:border-b-0"
-                          style={{ height: rowHeight }}
-                        >
-                          {/* Label */}
-                          <div
-                            className="flex-shrink-0 flex items-start px-4 pt-2.5 border-r border-gray-200 bg-white"
-                            style={{ width: LEFT_LABEL }}
-                          >
-                            <span className="text-xs text-gray-500 font-medium truncate">{row.label}</span>
+                    {/* Bar rows within theme */}
+                    {!collapsed && (
+                      themeBars.length === 0 ? (
+                        <div className="flex" style={{ height: LANE_HEIGHT }}>
+                          <div className="flex-shrink-0 flex items-center px-4 border-r border-gray-200 bg-white" style={{ width: LEFT_LABEL }}>
+                            <span className="text-xs text-gray-400 italic">No bars</span>
                           </div>
-
-                          {/* Bar canvas */}
-                          <div className="relative flex-1" style={{ height: rowHeight }}>
-                            {/* Grid lines */}
+                          <div className="flex-1" />
+                        </div>
+                      ) : (
+                        <div className="flex border-b border-gray-100" style={{ height: Math.max(1, themeBars.length) * LANE_HEIGHT }}>
+                          <div className="flex-shrink-0 flex items-start px-4 pt-2.5 border-r border-gray-200 bg-white" style={{ width: LEFT_LABEL }}>
+                            <span className="text-xs text-gray-500 font-medium">{themeBars.length} item{themeBars.length !== 1 ? 's' : ''}</span>
+                          </div>
+                          <div className="relative flex-1" style={{ height: themeBars.length * LANE_HEIGHT }}>
                             {months.map((_, i) => (
                               <div
                                 key={i}
@@ -334,7 +317,7 @@ export function RoadmapTimeline() {
                                 style={{ left: i * MONTH_WIDTH, width: MONTH_WIDTH }}
                               />
                             ))}
-                            {rowBars.map((bar, i) => (
+                            {themeBars.map((bar, i) => (
                               <div
                                 key={bar.id}
                                 style={{ position: 'absolute', top: i * LANE_HEIGHT, left: 0, right: 0, height: LANE_HEIGHT }}
@@ -350,11 +333,59 @@ export function RoadmapTimeline() {
                           </div>
                         </div>
                       )
-                    })}
+                    )}
                   </div>
                 )
               })}
+
+              {/* Bars without a theme */}
+              {(() => {
+                const unthemed = activeBars.filter(b => !b.themeId || !themes.some(t => t.id === b.themeId))
+                if (unthemed.length === 0) return null
+                return (
+                  <div className="border-b border-gray-200">
+                    <div className="flex items-center border-b border-gray-100" style={{ height: 32 }}>
+                      <div
+                        className="flex-shrink-0 flex items-center gap-2 px-3"
+                        style={{ width: LEFT_LABEL, borderRight: '1px solid #e5e7eb' }}
+                      >
+                        <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0 bg-gray-400" />
+                        <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">Unassigned</span>
+                      </div>
+                      <div className="flex-1" />
+                    </div>
+                    <div className="flex border-b border-gray-100" style={{ height: unthemed.length * LANE_HEIGHT }}>
+                      <div className="flex-shrink-0 flex items-start px-4 pt-2.5 border-r border-gray-200 bg-white" style={{ width: LEFT_LABEL }}>
+                        <span className="text-xs text-gray-500 font-medium">{unthemed.length} item{unthemed.length !== 1 ? 's' : ''}</span>
+                      </div>
+                      <div className="relative flex-1" style={{ height: unthemed.length * LANE_HEIGHT }}>
+                        {months.map((_, i) => (
+                          <div
+                            key={i}
+                            className="absolute top-0 bottom-0 border-r border-gray-100"
+                            style={{ left: i * MONTH_WIDTH, width: MONTH_WIDTH }}
+                          />
+                        ))}
+                        {unthemed.map((bar, i) => (
+                          <div
+                            key={bar.id}
+                            style={{ position: 'absolute', top: i * LANE_HEIGHT, left: 0, right: 0, height: LANE_HEIGHT }}
+                          >
+                            <BarItem
+                              bar={bar}
+                              startMonth={startMonth}
+                              onClick={() => setSelectedBar(selectedBar?.id === bar.id ? null : bar)}
+                              selected={selectedBar?.id === bar.id}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
+            )}
           </div>
         )}
       </div>

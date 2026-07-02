@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { PRIORITY_COLUMNS } from '../../lib/mockData'
+import { usePriorityColumns } from '../../lib/hooks'
 import type { Idea, IdeaScore, PriorityColumn } from '../../models'
 
 function computeScore(scores: IdeaScore[], columns: PriorityColumn[]): number {
@@ -26,6 +26,7 @@ interface Props {
 }
 
 export function PrioritizationBoard({ idea, onScoreChange }: Props) {
+  const { data: priorityColumns = [] } = usePriorityColumns()
   const [scores, setScores] = useState<IdeaScore[]>(idea.scores)
 
   const handleScore = (columnId: string, score: number) => {
@@ -39,10 +40,10 @@ export function PrioritizationBoard({ idea, onScoreChange }: Props) {
     onScoreChange?.(idea.id, columnId, score)
   }
 
-  const compositeScore = computeScore(scores, PRIORITY_COLUMNS)
+  const compositeScore = computeScore(scores, priorityColumns)
 
-  const benefitCols = PRIORITY_COLUMNS.filter(c => c.type === 'benefit')
-  const costCols = PRIORITY_COLUMNS.filter(c => c.type === 'cost')
+  const benefitCols = priorityColumns.filter(c => c.type === 'benefit')
+  const costCols = priorityColumns.filter(c => c.type === 'cost')
 
   const ScoreDots = ({ columnId, value }: { columnId: string; value: number }) => (
     <div className="flex gap-1 justify-center">
