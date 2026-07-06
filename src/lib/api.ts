@@ -169,11 +169,13 @@ export async function fetchObjectives(): Promise<Objective[]> {
 // ---- Initiatives ----
 
 export async function fetchInitiatives(): Promise<Initiative[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('pp_initiatives')
     .select('*')
     .eq('company_id', COMPANY_ID)
     .order('created_at')
+
+  if (error) console.error('fetchInitiatives error:', error)
 
   return (data ?? []).map(i => ({
     id: i.id,
