@@ -25,10 +25,16 @@ export interface Product {
   name: string
 }
 
+export type IdeaAppetite = 'small_batch' | 'big_batch' | 'tbd'
+
 export interface Idea {
   id: string
   title: string
   description: string
+  problem: string
+  customerEvidence: string
+  appetite: IdeaAppetite
+  constraints: string
   status: IdeaStatus
   requester: string
   votes: number

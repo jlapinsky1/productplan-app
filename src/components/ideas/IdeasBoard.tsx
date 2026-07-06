@@ -299,6 +299,18 @@ export function IdeasBoard() {
               <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Description</div>
               <p className="text-sm text-gray-600">{freshSelected.description}</p>
             </div>
+            {freshSelected.problem && (
+              <div>
+                <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Problem</div>
+                <p className="text-sm text-gray-600">{freshSelected.problem}</p>
+              </div>
+            )}
+            {freshSelected.customerEvidence && (
+              <div>
+                <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Customer Evidence</div>
+                <p className="text-sm text-gray-600">{freshSelected.customerEvidence}</p>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
                 <div className="text-xs text-gray-400 mb-0.5">Requester</div>
@@ -308,6 +320,19 @@ export function IdeasBoard() {
                 <div className="text-xs text-gray-400 mb-0.5">Votes</div>
                 <div className="font-medium text-gray-700">{freshSelected.votes}</div>
               </div>
+              <div>
+                <div className="text-xs text-gray-400 mb-0.5">Appetite</div>
+                <div className="font-medium text-gray-700">
+                  {freshSelected.appetite === 'small_batch' ? 'Small Batch' :
+                   freshSelected.appetite === 'big_batch' ? 'Big Batch' : 'TBD'}
+                </div>
+              </div>
+              {freshSelected.constraints && (
+                <div>
+                  <div className="text-xs text-gray-400 mb-0.5">Constraints</div>
+                  <div className="font-medium text-gray-700">{freshSelected.constraints}</div>
+                </div>
+              )}
             </div>
             <TagEditor idea={freshSelected} />
             <PrioritizationBoard idea={freshSelected} />
