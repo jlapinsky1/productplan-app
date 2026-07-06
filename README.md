@@ -1,6 +1,6 @@
 # ProductPlan
 
-A product management platform for capturing ideas, planning roadmaps, tracking strategic objectives, and visualizing portfolio-level execution.
+A product management platform for capturing ideas, planning roadmaps, tracking strategic objectives, and visualizing portfolio-level execution. Wired to a live Supabase backend and integrated with Jarvis (AI Chief of Staff) for automated initiative management.
 
 ## Modules
 
@@ -8,12 +8,19 @@ A product management platform for capturing ideas, planning roadmaps, tracking s
 
 - **Idea backlog** with table view showing title, status, tags, requester, votes, and priority score
 - **Filter by status:** All, Backlog, Planned, In Progress, Done
+- **Filter by product** to scope ideas to a specific product area
 - **Sort by:** Priority Score, Votes, or Date Added
 - **Weighted prioritization scoring** — rate each idea across five dimensions:
   - _Benefit:_ Revenue Potential (3x), Customer Delight (2x), Strategic Value (2x)
   - _Cost:_ Effort (2x), Risk (1x)
   - Composite score (0–100) computed in real time with color-coded indicators (red/yellow/green)
-- **Detail panel** expands on selection to show description, requester, tags, and the interactive scoring board
+- **Detail panel** expands on selection to show description, requester, tags, scoring board, and ShapeUp fields:
+  - **Problem** — what user problem does this solve?
+  - **Customer Evidence** — quotes, tickets, data supporting the need
+  - **Appetite** — Small Batch / Big Batch / TBD
+  - **Constraints** — known limitations or rabbit holes
+- **Tag management** — add/remove tags directly from the detail panel
+- Jarvis's Sage agent populates ShapeUp fields via conversational follow-up in Slack
 
 ### Roadmap (`/roadmap`)
 
@@ -30,8 +37,16 @@ A product management platform for capturing ideas, planning roadmaps, tracking s
 - **OKR framework** with company-level and team-level objectives
 - **Objective cards** showing title, description, RAG status (Red/Amber/Green), team, and a progress ring
 - **Key results** expandable under each objective with current/target values, unit formatting ($, %, #), and progress bars
-- **Composite progress** calculated as the average of key result completion percentages
-- **Linked roadmap items** referenced on each objective
+- **Initiatives nested under objectives** — each initiative shows:
+  - Title with color-coded **status badge** (Draft, Active, In Progress, At Risk, Paused, Complete, Cancelled)
+  - **Priority badge** (Critical, High, Medium, Low)
+  - **Progress bar** with current/target values and success metric label
+  - **Deadline** and **stakeholder names**
+  - **Blockers** highlighted in red when present
+  - **Operating owner** (who drives it — can be a Jarvis agent or a person)
+- **Unlinked initiatives** — initiatives without an objective appear in a separate section
+- Composite progress calculated as the average of key result completion percentages
+- Linked roadmap items referenced on each objective
 
 ### Portfolio (`/portfolio`)
 
@@ -41,10 +56,20 @@ A product management platform for capturing ideas, planning roadmaps, tracking s
 - **Show/Hide Connections toggle** to display linkages between hierarchy levels
 - **RAG status legend** and hierarchy key
 
+## Jarvis Integration
+
+ProductPlan shares a Supabase instance with Jarvis (AI Chief of Staff). This enables:
+
+- **Idea intake via Slack** — tell Jarvis about a new idea and Sage populates the ShapeUp fields (problem, evidence, appetite, constraints) through follow-up questions
+- **Initiative management** — `pp_initiatives` is the single source of truth. When you tell Jarvis "new initiative: migrate enterprise customers", it captures stakeholders (name, role, email, Slack ID), success metrics, objective linkage, and writes directly to `pp_initiatives`. The data appears on the Strategy board immediately.
+- **Initiative driving** — Jarvis reads active initiatives from `pp_initiatives`, identifies stalls via work items, diagnoses root causes, and takes autonomous actions (Slack messages, Jira tickets, escalations)
+- **Dashboard sync** — active initiatives from `pp_initiatives` appear as goal nodes on the Jarvis dashboard Visual Hub, linked to their assigned agent
+
 ## Tech Stack
 
 - React 19 + TypeScript
-- TanStack Router
+- TanStack Router + TanStack React Query
+- Supabase (PostgreSQL + Realtime)
 - Tailwind CSS 4
 - Lucide React (icons)
 - Vite
@@ -56,6 +81,6 @@ npm install
 npm run dev
 ```
 
-## Current State
+## Data
 
-This is a frontend prototype using mock data. There is no backend, authentication, or data persistence — all state lives client-side. Action buttons (Add Idea, Add Bar, New Objective, Add Key Result) are present in the UI but not yet wired to creation flows.
+All data is live from Supabase. Tables are prefixed `pp_` (e.g., `pp_ideas`, `pp_roadmap_bars`, `pp_objectives`, `pp_initiatives`). Company ID: `00000000-0000-0000-0000-000000000001`.
