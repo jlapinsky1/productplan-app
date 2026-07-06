@@ -4,7 +4,15 @@ export type RagStatus = 'red' | 'amber' | 'green'
 export type BarStatus = 'planned' | 'in_progress' | 'complete'
 export type KrUnit = 'dollar' | 'percent' | 'number'
 export type PriorityColumnType = 'benefit' | 'cost'
-export type InitiativeStatus = 'draft' | 'in_progress' | 'complete' | 'cancelled'
+export type InitiativeStatus = 'draft' | 'active' | 'in_progress' | 'at_risk' | 'paused' | 'complete' | 'cancelled'
+export type InitiativePriority = 'critical' | 'high' | 'medium' | 'low'
+
+export interface Stakeholder {
+  name: string
+  role: string
+  email?: string
+  slackId?: string
+}
 
 export interface PriorityColumn {
   id: string
@@ -114,7 +122,19 @@ export interface Initiative {
   title: string
   description: string
   businessValue: string
+  businessGoal: string
+  successMetric: string
+  targetValue: number
+  currentValue: number
+  deadline?: string
+  priority: InitiativePriority
   status: InitiativeStatus
+  stakeholders: Stakeholder[]
+  blockers: string
+  executiveOwner: string
+  operatingOwner: string
   objectiveId?: string
+  initiativeKey?: string
   createdAt: string
+  updatedAt?: string
 }

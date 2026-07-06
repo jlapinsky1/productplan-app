@@ -1,12 +1,29 @@
 import { useState } from 'react'
-import { Plus, ChevronDown, ChevronRight } from 'lucide-react'
-import { useObjectives } from '../../lib/hooks'
-import type { Objective, KeyResult, RagStatus } from '../../models'
+import { Plus, ChevronDown, ChevronRight, AlertTriangle, Users, Calendar } from 'lucide-react'
+import { useObjectives, useInitiatives } from '../../lib/hooks'
+import type { Objective, KeyResult, RagStatus, Initiative, InitiativeStatus, InitiativePriority } from '../../models'
 
 const RAG_CONFIG: Record<RagStatus, { label: string; bg: string; dot: string; text: string }> = {
   green: { label: 'On Track', bg: 'bg-green-50', dot: 'bg-green-500', text: 'text-green-700' },
   amber: { label: 'At Risk', bg: 'bg-amber-50', dot: 'bg-amber-400', text: 'text-amber-700' },
   red: { label: 'Off Track', bg: 'bg-red-50', dot: 'bg-red-500', text: 'text-red-700' },
+}
+
+const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string }> = {
+  draft: { label: 'Draft', bg: 'bg-gray-100', text: 'text-gray-600' },
+  active: { label: 'Active', bg: 'bg-green-50', text: 'text-green-700' },
+  in_progress: { label: 'In Progress', bg: 'bg-blue-50', text: 'text-blue-700' },
+  at_risk: { label: 'At Risk', bg: 'bg-amber-50', text: 'text-amber-700' },
+  paused: { label: 'Paused', bg: 'bg-gray-100', text: 'text-gray-500' },
+  complete: { label: 'Complete', bg: 'bg-green-50', text: 'text-green-700' },
+  cancelled: { label: 'Cancelled', bg: 'bg-red-50', text: 'text-red-600' },
+}
+
+const PRIORITY_CONFIG: Record<InitiativePriority, { label: string; bg: string; text: string }> = {
+  critical: { label: 'Critical', bg: 'bg-red-50', text: 'text-red-700' },
+  high: { label: 'High', bg: 'bg-orange-50', text: 'text-orange-700' },
+  medium: { label: 'Medium', bg: 'bg-blue-50', text: 'text-blue-600' },
+  low: { label: 'Low', bg: 'bg-gray-100', text: 'text-gray-500' },
 }
 
 function krProgress(kr: KeyResult): number {
@@ -23,6 +40,11 @@ function formatValue(value: number, unit: KeyResult['unit']): string {
 function avgProgress(obj: Objective): number {
   if (obj.keyResults.length === 0) return 0
   return Math.round(obj.keyResults.reduce((sum, kr) => sum + krProgress(kr), 0) / obj.keyResults.length)
+}
+
+function initiativeProgress(init: Initiative): number {
+  if (!init.targetValue || init.targetValue === 0) return 0
+  return Math.min(100, Math.round((init.currentValue / init.targetValue) * 100))
 }
 
 function ProgressRing({ percent, color }: { percent: number; color: string }) {
@@ -48,7 +70,74 @@ function ProgressRing({ percent, color }: { percent: number; color: string }) {
   )
 }
 
-function ObjectiveCard({ obj }: { obj: Objective }) {
+function InitiativeCard({ initiative }: { initiative: Initiative }) {
+  const progress = initiativeProgress(initiative)
+  const statusCfg = STATUS_CONFIG[initiative.status] ?? STATUS_CONFIG.draft
+  const priorityCfg = PRIORITY_CONFIG[initiative.priority] ?? PRIORITY_CONFIG.medium
+
+  return (
+    <div className="px-5 py-3 flex items-start gap-3 border-b border-gray-50 last:border-b-0">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap mb-1">
+          <span className="text-xs font-semibold text-gray-800">{initiative.title}</span>
+          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${statusCfg.bg} ${statusCfg.text}`}>
+            {statusCfg.label}
+          </span>
+          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${priorityCfg.bg} ${priorityCfg.text}`}>
+            {priorityCfg.label}
+          </span>
+        </div>
+
+        {initiative.businessGoal && (
+          <p className="text-xs text-gray-500 mb-1.5 truncate">{initiative.businessGoal}</p>
+        )}
+
+        {/* Progress bar */}
+        {initiative.targetValue > 0 && (
+          <div className="flex items-center gap-2 mb-1.5">
+            <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full bg-indigo-500 transition-all"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <span className="text-xs text-gray-500 whitespace-nowrap">
+              {initiative.currentValue} / {initiative.targetValue} {initiative.successMetric}
+            </span>
+            <span className="text-xs font-semibold text-gray-700 w-8 text-right">{progress}%</span>
+          </div>
+        )}
+
+        <div className="flex items-center gap-3 text-xs text-gray-400">
+          {initiative.deadline && (
+            <span className="flex items-center gap-1">
+              <Calendar size={10} />
+              {initiative.deadline}
+            </span>
+          )}
+          {initiative.stakeholders.length > 0 && (
+            <span className="flex items-center gap-1">
+              <Users size={10} />
+              {initiative.stakeholders.map(s => s.name).join(', ')}
+            </span>
+          )}
+          {initiative.operatingOwner && (
+            <span>Driven by {initiative.operatingOwner}</span>
+          )}
+        </div>
+
+        {initiative.blockers && (
+          <div className="flex items-center gap-1 mt-1 text-xs text-red-600">
+            <AlertTriangle size={10} />
+            {initiative.blockers}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function ObjectiveCard({ obj, initiatives }: { obj: Objective; initiatives: Initiative[] }) {
   const [expanded, setExpanded] = useState(true)
   const rag = RAG_CONFIG[obj.ragStatus]
   const progress = avgProgress(obj)
@@ -72,9 +161,11 @@ function ObjectiveCard({ obj }: { obj: Objective }) {
           </div>
           <p className="text-xs text-gray-500 mt-0.5 truncate">{obj.description}</p>
           <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
-            <span>{obj.teamName}</span>
-            <span>·</span>
+            {obj.teamName && <span>{obj.teamName}</span>}
+            {obj.teamName && <span>·</span>}
             <span>{obj.keyResults.length} key results</span>
+            <span>·</span>
+            <span>{initiatives.length} initiatives</span>
             <span>·</span>
             <span>{obj.linkedBarIds.length} roadmap items</span>
           </div>
@@ -82,9 +173,9 @@ function ObjectiveCard({ obj }: { obj: Objective }) {
         {expanded ? <ChevronDown size={16} className="text-gray-400 mt-1 flex-shrink-0" /> : <ChevronRight size={16} className="text-gray-400 mt-1 flex-shrink-0" />}
       </div>
 
-      {/* Key Results */}
       {expanded && (
         <div className="border-t border-gray-100">
+          {/* Key Results */}
           {obj.keyResults.map((kr, i) => {
             const p = krProgress(kr)
             return (
@@ -110,6 +201,19 @@ function ObjectiveCard({ obj }: { obj: Objective }) {
               </div>
             )
           })}
+
+          {/* Initiatives */}
+          {initiatives.length > 0 && (
+            <div className="border-t border-gray-100">
+              <div className="px-5 py-2 bg-gray-50 border-b border-gray-100">
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Initiatives</span>
+              </div>
+              {initiatives.map(init => (
+                <InitiativeCard key={init.id} initiative={init} />
+              ))}
+            </div>
+          )}
+
           <div className="px-5 py-2 bg-gray-50 border-t border-gray-100">
             <button className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">+ Add Key Result</button>
           </div>
@@ -120,11 +224,26 @@ function ObjectiveCard({ obj }: { obj: Objective }) {
 }
 
 export function StrategyBoard() {
-  const { data: objectives = [], isLoading } = useObjectives()
+  const { data: objectives = [], isLoading: loadingObj } = useObjectives()
+  const { data: initiatives = [], isLoading: loadingInit } = useInitiatives()
+
   const company = objectives.filter(o => o.scope === 'company')
   const team = objectives.filter(o => o.scope === 'team')
 
-  if (isLoading) {
+  // Group initiatives by objectiveId
+  const initByObjective = new Map<string, Initiative[]>()
+  const unlinkedInitiatives: Initiative[] = []
+  for (const init of initiatives) {
+    if (init.objectiveId) {
+      const list = initByObjective.get(init.objectiveId) ?? []
+      list.push(init)
+      initByObjective.set(init.objectiveId, list)
+    } else {
+      unlinkedInitiatives.push(init)
+    }
+  }
+
+  if (loadingObj || loadingInit) {
     return <div className="flex items-center justify-center h-full text-gray-400">Loading strategy…</div>
   }
 
@@ -133,7 +252,7 @@ export function StrategyBoard() {
       <div className="px-6 py-4 border-b border-gray-200 bg-white flex items-center justify-between sticky top-0 z-10">
         <div>
           <h1 className="text-lg font-semibold text-gray-900">Strategy</h1>
-          <p className="text-sm text-gray-500">Objectives &amp; Key Results — connect goals to your roadmap</p>
+          <p className="text-sm text-gray-500">Objectives, Key Results &amp; Initiatives — connect goals to execution</p>
         </div>
         <button className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700">
           <Plus size={14} /> New Objective
@@ -141,9 +260,10 @@ export function StrategyBoard() {
       </div>
 
       <div className="p-6 space-y-8 max-w-4xl">
-        {objectives.length === 0 && (
+        {objectives.length === 0 && initiatives.length === 0 && (
           <div className="text-center text-gray-400 py-16">
-            <p className="text-sm">No objectives defined yet</p>
+            <p className="text-sm">No objectives or initiatives defined yet</p>
+            <p className="text-xs mt-1">Tell Jarvis "new initiative" to get started</p>
           </div>
         )}
 
@@ -154,7 +274,9 @@ export function StrategyBoard() {
               <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Company Objectives</h2>
             </div>
             <div className="space-y-3">
-              {company.map(obj => <ObjectiveCard key={obj.id} obj={obj} />)}
+              {company.map(obj => (
+                <ObjectiveCard key={obj.id} obj={obj} initiatives={initByObjective.get(obj.id) ?? []} />
+              ))}
             </div>
           </section>
         )}
@@ -166,7 +288,23 @@ export function StrategyBoard() {
               <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Team Objectives</h2>
             </div>
             <div className="space-y-3">
-              {team.map(obj => <ObjectiveCard key={obj.id} obj={obj} />)}
+              {team.map(obj => (
+                <ObjectiveCard key={obj.id} obj={obj} initiatives={initByObjective.get(obj.id) ?? []} />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {unlinkedInitiatives.length > 0 && (
+          <section>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-2 h-2 rounded-full bg-amber-400" />
+              <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Unlinked Initiatives</h2>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              {unlinkedInitiatives.map(init => (
+                <InitiativeCard key={init.id} initiative={init} />
+              ))}
             </div>
           </section>
         )}
