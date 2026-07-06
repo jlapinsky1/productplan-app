@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Plus, ChevronDown, ChevronRight, AlertTriangle, Users, Calendar } from 'lucide-react'
 import { useObjectives, useInitiatives } from '../../lib/hooks'
-import type { Objective, KeyResult, RagStatus, Initiative, InitiativeStatus, InitiativePriority } from '../../models'
+import type { Objective, KeyResult, RagStatus, Initiative, InitiativePriority } from '../../models'
 
 const RAG_CONFIG: Record<RagStatus, { label: string; bg: string; dot: string; text: string }> = {
   green: { label: 'On Track', bg: 'bg-green-50', dot: 'bg-green-500', text: 'text-green-700' },
