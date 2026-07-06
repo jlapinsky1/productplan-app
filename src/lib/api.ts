@@ -199,3 +199,11 @@ export async function fetchInitiatives(): Promise<Initiative[]> {
     updatedAt: i.updated_at ?? undefined,
   }))
 }
+
+export async function updateInitiativeObjective(initiativeId: string, objectiveId: string | null): Promise<void> {
+  const { error } = await supabase
+    .from('pp_initiatives')
+    .update({ objective_id: objectiveId })
+    .eq('id', initiativeId)
+  if (error) throw error
+}

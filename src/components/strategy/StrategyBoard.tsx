@@ -1,6 +1,8 @@
-import { useState } from 'react'
-import { Plus, ChevronDown, ChevronRight, AlertTriangle, Users, Calendar } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { Plus, ChevronDown, ChevronRight, AlertTriangle, Users, Calendar, Link, Unlink } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useObjectives, useInitiatives } from '../../lib/hooks'
+import { updateInitiativeObjective } from '../../lib/api'
 import type { Objective, KeyResult, RagStatus, Initiative, InitiativePriority } from '../../models'
 
 const RAG_CONFIG: Record<RagStatus, { label: string; bg: string; dot: string; text: string }> = {
@@ -70,7 +72,66 @@ function ProgressRing({ percent, color }: { percent: number; color: string }) {
   )
 }
 
-function InitiativeCard({ initiative }: { initiative: Initiative }) {
+function LinkObjectiveDropdown({ initiative, objectives }: { initiative: Initiative; objectives: Objective[] }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const qc = useQueryClient()
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const handleLink = async (objectiveId: string | null) => {
+    setOpen(false)
+    await updateInitiativeObjective(initiative.id, objectiveId)
+    qc.invalidateQueries({ queryKey: ['initiatives'] })
+  }
+
+  if (initiative.objectiveId) {
+    return (
+      <button
+        onClick={(e) => { e.stopPropagation(); handleLink(null) }}
+        className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-red-500 transition-colors"
+        title="Unlink from objective"
+      >
+        <Unlink size={10} />
+      </button>
+    )
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={(e) => { e.stopPropagation(); setOpen(!open) }}
+        className="flex items-center gap-1 text-[10px] text-indigo-500 hover:text-indigo-700 font-medium transition-colors"
+      >
+        <Link size={10} /> Link to Objective
+      </button>
+      {open && (
+        <div className="absolute top-5 left-0 z-20 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[200px]">
+          {objectives.length === 0 && (
+            <div className="px-3 py-2 text-xs text-gray-400">No objectives available</div>
+          )}
+          {objectives.map(obj => (
+            <button
+              key={obj.id}
+              onClick={() => handleLink(obj.id)}
+              className="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors"
+            >
+              {obj.title}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function InitiativeCard({ initiative, objectives }: { initiative: Initiative; objectives: Objective[] }) {
   const progress = initiativeProgress(initiative)
   const statusCfg = STATUS_CONFIG[initiative.status] ?? STATUS_CONFIG.draft
   const priorityCfg = PRIORITY_CONFIG[initiative.priority] ?? PRIORITY_CONFIG.medium
@@ -86,6 +147,7 @@ function InitiativeCard({ initiative }: { initiative: Initiative }) {
           <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${priorityCfg.bg} ${priorityCfg.text}`}>
             {priorityCfg.label}
           </span>
+          <LinkObjectiveDropdown initiative={initiative} objectives={objectives} />
         </div>
 
         {initiative.businessGoal && (
@@ -137,7 +199,7 @@ function InitiativeCard({ initiative }: { initiative: Initiative }) {
   )
 }
 
-function ObjectiveCard({ obj, initiatives }: { obj: Objective; initiatives: Initiative[] }) {
+function ObjectiveCard({ obj, initiatives, allObjectives }: { obj: Objective; initiatives: Initiative[]; allObjectives: Objective[] }) {
   const [expanded, setExpanded] = useState(true)
   const rag = RAG_CONFIG[obj.ragStatus]
   const progress = avgProgress(obj)
@@ -209,7 +271,7 @@ function ObjectiveCard({ obj, initiatives }: { obj: Objective; initiatives: Init
                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Initiatives</span>
               </div>
               {initiatives.map(init => (
-                <InitiativeCard key={init.id} initiative={init} />
+                <InitiativeCard key={init.id} initiative={init} objectives={allObjectives} />
               ))}
             </div>
           )}
@@ -275,7 +337,7 @@ export function StrategyBoard() {
             </div>
             <div className="space-y-3">
               {company.map(obj => (
-                <ObjectiveCard key={obj.id} obj={obj} initiatives={initByObjective.get(obj.id) ?? []} />
+                <ObjectiveCard key={obj.id} obj={obj} initiatives={initByObjective.get(obj.id) ?? []} allObjectives={objectives} />
               ))}
             </div>
           </section>
@@ -289,7 +351,7 @@ export function StrategyBoard() {
             </div>
             <div className="space-y-3">
               {team.map(obj => (
-                <ObjectiveCard key={obj.id} obj={obj} initiatives={initByObjective.get(obj.id) ?? []} />
+                <ObjectiveCard key={obj.id} obj={obj} initiatives={initByObjective.get(obj.id) ?? []} allObjectives={objectives} />
               ))}
             </div>
           </section>
@@ -303,7 +365,7 @@ export function StrategyBoard() {
             </div>
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
               {unlinkedInitiatives.map(init => (
-                <InitiativeCard key={init.id} initiative={init} />
+                <InitiativeCard key={init.id} initiative={init} objectives={objectives} />
               ))}
             </div>
           </section>
