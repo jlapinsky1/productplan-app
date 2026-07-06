@@ -62,7 +62,7 @@ ProductPlan shares a Supabase instance with Jarvis (AI Chief of Staff). This ena
 
 - **Idea intake via Slack** — tell Jarvis about a new idea and Sage populates the ShapeUp fields (problem, evidence, appetite, constraints) through follow-up questions
 - **Initiative management** — `pp_initiatives` is the single source of truth. When you tell Jarvis "new initiative: migrate enterprise customers", it captures stakeholders (name, role, email, Slack ID), success metrics, objective linkage, and writes directly to `pp_initiatives`. The data appears on the Strategy board immediately.
-- **Initiative driving** — Jarvis reads active initiatives from `pp_initiatives`, identifies stalls via work items, diagnoses root causes, and takes autonomous actions (Slack messages, Jira tickets, escalations)
+- **Initiative driving** — Jarvis reads active initiatives from `pp_initiatives`, syncs ALL early adopters from Morgan's migration briefing as tracked work items, detects stalls by migration stage, DMs CSMs directly on Slack (max 2x/week), and creates Jira tickets for blockers. CSMs can chat back and forth with Jarvis in Slack DMs — full conversational experience with initiative context. Jarvis auto-decides outcomes: create Jira, flag for staff briefing, or schedule follow-ups.
 - **Dashboard sync** — active initiatives from `pp_initiatives` appear as goal nodes on the Jarvis dashboard Visual Hub, linked to their assigned agent
 
 ## Tech Stack
