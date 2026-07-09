@@ -45,6 +45,7 @@ export interface Idea {
   constraints: string
   status: IdeaStatus
   requester: string
+  arr: number | null
   votes: number
   tags: string[]
   productId?: string

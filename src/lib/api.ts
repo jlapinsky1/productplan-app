@@ -40,6 +40,7 @@ export async function fetchIdeas(): Promise<Idea[]> {
     constraints: i.constraints ?? '',
     status: i.status ?? 'backlog',
     requester: i.requester ?? '',
+    arr: i.arr ?? null,
     votes: i.votes ?? 0,
     tags: i.tags ?? [],
     productId: i.product_id ?? undefined,
@@ -68,6 +69,13 @@ export async function updateIdeaTags(ideaId: string, tags: string[]): Promise<vo
   await supabase
     .from('pp_ideas')
     .update({ tags })
+    .eq('id', ideaId)
+}
+
+export async function updateIdea(ideaId: string, fields: Record<string, unknown>): Promise<void> {
+  await supabase
+    .from('pp_ideas')
+    .update(fields)
     .eq('id', ideaId)
 }
 

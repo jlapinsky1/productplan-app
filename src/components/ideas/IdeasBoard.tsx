@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ThumbsUp, Plus, ChevronDown, Tag, ArrowRight, X } from 'lucide-react'
 import { useIdeas, usePriorityColumns, useProducts } from '../../lib/hooks'
-import { updateIdeaTags } from '../../lib/api'
+import { updateIdeaTags, updateIdea } from '../../lib/api'
 import { computeScore } from './PrioritizationBoard'
 import { PrioritizationBoard } from './PrioritizationBoard'
 import type { Idea, IdeaStatus } from '../../models'
@@ -79,10 +79,81 @@ function TagEditor({ idea }: { idea: Idea }) {
   )
 }
 
+function EditableText({ value, placeholder, onSave }: { value: string; placeholder: string; onSave: (v: string) => Promise<void> }) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(value)
+
+  const commit = async () => {
+    setEditing(false)
+    if (draft !== value) await onSave(draft)
+  }
+
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        type="text"
+        value={draft}
+        onChange={e => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') { setDraft(value); setEditing(false) } }}
+        className="w-full text-sm font-medium text-gray-700 border border-indigo-300 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+      />
+    )
+  }
+
+  return (
+    <div
+      onClick={() => { setDraft(value); setEditing(true) }}
+      className="font-medium text-gray-700 cursor-pointer hover:bg-gray-50 rounded px-1.5 py-0.5 -mx-1.5 min-h-[24px]"
+    >
+      {value || <span className="text-gray-300 italic">{placeholder}</span>}
+    </div>
+  )
+}
+
+function EditableCurrency({ value, placeholder, onSave }: { value: number | null; placeholder: string; onSave: (v: number | null) => Promise<void> }) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(value != null ? String(value) : '')
+
+  const commit = async () => {
+    setEditing(false)
+    const parsed = draft.trim() === '' ? null : Number(draft.replace(/[,$]/g, ''))
+    if (parsed !== value && (parsed === null || !isNaN(parsed))) await onSave(parsed)
+  }
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-1">
+        <span className="text-sm text-gray-400">$</span>
+        <input
+          autoFocus
+          type="text"
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') { setDraft(value != null ? String(value) : ''); setEditing(false) } }}
+          className="w-full text-sm font-medium text-gray-700 border border-indigo-300 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div
+      onClick={() => { setDraft(value != null ? String(value) : ''); setEditing(true) }}
+      className="font-medium text-gray-700 cursor-pointer hover:bg-gray-50 rounded px-1.5 py-0.5 -mx-1.5 min-h-[24px]"
+    >
+      {value != null ? `$${value.toLocaleString()}` : <span className="text-gray-300 italic">{placeholder}</span>}
+    </div>
+  )
+}
+
 export function IdeasBoard() {
   const { data: ideas = [], isLoading } = useIdeas()
   const { data: priorityColumns = [] } = usePriorityColumns()
   const { data: products = [] } = useProducts()
+  const queryClient = useQueryClient()
   const [selectedIdea, setSelectedIdea] = useState<Idea | null>(null)
   const [filterStatus, setFilterStatus] = useState<IdeaStatus | 'all'>('all')
   const [filterProduct, setFilterProduct] = useState<string>('all')
@@ -194,6 +265,7 @@ export function IdeasBoard() {
                 <th className="text-left text-xs font-semibold text-gray-500 px-4 py-3">Status</th>
                 <th className="text-left text-xs font-semibold text-gray-500 px-4 py-3">Tags</th>
                 <th className="text-left text-xs font-semibold text-gray-500 px-4 py-3">Requester</th>
+                <th className="text-right text-xs font-semibold text-gray-500 px-4 py-3">ARR</th>
                 <th className="text-right text-xs font-semibold text-gray-500 px-4 py-3">Votes</th>
                 <th className="text-right text-xs font-semibold text-gray-500 px-4 py-3">Score</th>
                 <th className="text-right text-xs font-semibold text-gray-500 px-6 py-3">Actions</th>
@@ -233,6 +305,9 @@ export function IdeasBoard() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-600">{idea.requester}</td>
+                    <td className="px-4 py-3 text-right text-sm text-gray-600">
+                      {idea.arr != null ? `$${idea.arr.toLocaleString()}` : '—'}
+                    </td>
                     <td className="px-4 py-3 text-right">
                       <span className="flex items-center justify-end gap-1 text-sm text-gray-600">
                         <ThumbsUp size={12} className="text-gray-400" />
@@ -314,7 +389,25 @@ export function IdeasBoard() {
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
                 <div className="text-xs text-gray-400 mb-0.5">Requester</div>
-                <div className="font-medium text-gray-700">{freshSelected.requester}</div>
+                <EditableText
+                  value={freshSelected.requester}
+                  placeholder="Add requester…"
+                  onSave={async (val) => {
+                    await updateIdea(freshSelected.id, { requester: val })
+                    queryClient.invalidateQueries({ queryKey: ['ideas'] })
+                  }}
+                />
+              </div>
+              <div>
+                <div className="text-xs text-gray-400 mb-0.5">ARR</div>
+                <EditableCurrency
+                  value={freshSelected.arr}
+                  placeholder="Add ARR…"
+                  onSave={async (val) => {
+                    await updateIdea(freshSelected.id, { arr: val })
+                    queryClient.invalidateQueries({ queryKey: ['ideas'] })
+                  }}
+                />
               </div>
               <div>
                 <div className="text-xs text-gray-400 mb-0.5">Votes</div>
