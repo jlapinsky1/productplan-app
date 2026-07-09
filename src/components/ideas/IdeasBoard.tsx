@@ -149,6 +149,39 @@ function EditableCurrency({ value, placeholder, onSave }: { value: number | null
   )
 }
 
+function EditableTextArea({ value, placeholder, onSave }: { value: string; placeholder: string; onSave: (v: string) => Promise<void> }) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(value)
+
+  const commit = async () => {
+    setEditing(false)
+    if (draft !== value) await onSave(draft)
+  }
+
+  if (editing) {
+    return (
+      <textarea
+        autoFocus
+        value={draft}
+        onChange={e => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={e => { if (e.key === 'Escape') { setDraft(value); setEditing(false) } }}
+        rows={4}
+        className="w-full text-sm text-gray-700 border border-indigo-300 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-400 resize-y"
+      />
+    )
+  }
+
+  return (
+    <div
+      onClick={() => { setDraft(value); setEditing(true) }}
+      className="text-sm text-gray-600 cursor-pointer hover:bg-gray-50 rounded-md px-2 py-1.5 -mx-2 min-h-[60px] whitespace-pre-wrap"
+    >
+      {value || <span className="text-gray-300 italic">{placeholder}</span>}
+    </div>
+  )
+}
+
 export function IdeasBoard() {
   const { data: ideas = [], isLoading } = useIdeas()
   const { data: priorityColumns = [] } = usePriorityColumns()
@@ -386,6 +419,17 @@ export function IdeasBoard() {
                 <p className="text-sm text-gray-600">{freshSelected.customerEvidence}</p>
               </div>
             )}
+            <div>
+              <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Strategic Notes</div>
+              <EditableTextArea
+                value={freshSelected.notes}
+                placeholder="Add context — migration impact, M&A rationale, business case notes…"
+                onSave={async (val) => {
+                  await updateIdea(freshSelected.id, { notes: val })
+                  queryClient.invalidateQueries({ queryKey: ['ideas'] })
+                }}
+              />
+            </div>
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
                 <div className="text-xs text-gray-400 mb-0.5">Requester</div>

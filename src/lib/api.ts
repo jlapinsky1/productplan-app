@@ -41,6 +41,7 @@ export async function fetchIdeas(): Promise<Idea[]> {
     status: i.status ?? 'backlog',
     requester: i.requester ?? '',
     arr: i.arr ?? null,
+    notes: i.notes ?? '',
     votes: i.votes ?? 0,
     tags: i.tags ?? [],
     productId: i.product_id ?? undefined,

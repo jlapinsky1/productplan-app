@@ -46,6 +46,7 @@ export interface Idea {
   status: IdeaStatus
   requester: string
   arr: number | null
+  notes: string
   votes: number
   tags: string[]
   productId?: string
