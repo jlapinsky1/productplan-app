@@ -80,6 +80,12 @@ export async function updateIdea(ideaId: string, fields: Record<string, unknown>
     .eq('id', ideaId)
 }
 
+export async function upsertScore(ideaId: string, columnId: string, score: number): Promise<void> {
+  await supabase
+    .from('pp_idea_scores')
+    .upsert({ idea_id: ideaId, column_id: columnId, score }, { onConflict: 'idea_id,column_id' })
+}
+
 // ---- Priority Columns ----
 
 export async function fetchPriorityColumns(): Promise<PriorityColumn[]> {

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ThumbsUp, Plus, ChevronDown, Tag, ArrowRight, X } from 'lucide-react'
 import { useIdeas, usePriorityColumns, useProducts } from '../../lib/hooks'
-import { updateIdeaTags, updateIdea } from '../../lib/api'
+import { updateIdeaTags, updateIdea, upsertScore } from '../../lib/api'
 import { computeScore } from './PrioritizationBoard'
 import { PrioritizationBoard } from './PrioritizationBoard'
 import type { Idea, IdeaStatus } from '../../models'
@@ -472,7 +472,9 @@ export function IdeasBoard() {
               )}
             </div>
             <TagEditor idea={freshSelected} />
-            <PrioritizationBoard idea={freshSelected} />
+            <PrioritizationBoard idea={freshSelected} onScoreChange={(ideaId, columnId, score) => {
+              upsertScore(ideaId, columnId, score).then(() => queryClient.invalidateQueries({ queryKey: ['ideas'] }))
+            }} />
           </div>
         </div>
       )}
