@@ -1,25 +1,77 @@
 import { useState } from 'react'
 import { Rocket } from 'lucide-react'
-import { useIdeas, useProducts } from '../../lib/hooks'
+import { useIdeas, useProducts, useRoadmapBars } from '../../lib/hooks'
+
+interface ReleaseItem {
+  id: string
+  title: string
+  description: string
+  status: 'done' | 'released'
+  productId?: string
+  requester: string
+  arr: number | null
+  tags: string[]
+  date: string
+}
 
 export function ReleasesPage() {
-  const { data: ideas = [], isLoading } = useIdeas()
+  const { data: ideas = [], isLoading: ideasLoading } = useIdeas()
   const { data: products = [] } = useProducts()
+  const { data: roadmapBars = [], isLoading: barsLoading } = useRoadmapBars()
   const [filterProduct, setFilterProduct] = useState<string>('all')
   const [filterRange, setFilterRange] = useState<'all' | '7d' | '30d' | '90d'>('all')
 
-  const released = ideas
-    .filter(i => i.status === 'released' || i.status === 'done')
+  // Build release items from both sources
+  const releaseItems: ReleaseItem[] = []
+  const seenIds = new Set<string>()
+
+  // 1. Ideas marked done/released
+  for (const idea of ideas) {
+    if (idea.status === 'done' || idea.status === 'released') {
+      seenIds.add(idea.linkedBarId ?? '')
+      releaseItems.push({
+        id: idea.id,
+        title: idea.title,
+        description: idea.description,
+        status: idea.status as 'done' | 'released',
+        productId: idea.productId,
+        requester: idea.requester,
+        arr: idea.arr,
+        tags: idea.tags,
+        date: idea.updatedAt,
+      })
+    }
+  }
+
+  // 2. Completed roadmap bars without a linked idea
+  for (const bar of roadmapBars) {
+    if (bar.percentComplete === 100 && !seenIds.has(bar.id)) {
+      releaseItems.push({
+        id: bar.id,
+        title: bar.title,
+        description: bar.description,
+        status: 'done',
+        productId: undefined,
+        requester: '',
+        arr: null,
+        tags: bar.tags,
+        date: bar.createdAt,
+      })
+    }
+  }
+
+  const filtered = releaseItems
     .filter(i => filterProduct === 'all' || i.productId === filterProduct)
     .filter(i => {
       if (filterRange === 'all') return true
       const days = filterRange === '7d' ? 7 : filterRange === '30d' ? 30 : 90
       const cutoff = Date.now() - days * 86400000
-      return new Date(i.updatedAt).getTime() >= cutoff
+      return new Date(i.date).getTime() >= cutoff
     })
-    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
   const productMap = new Map(products.map(p => [p.id, p.name]))
+  const isLoading = ideasLoading || barsLoading
 
   if (isLoading) {
     return <div className="flex items-center justify-center h-full text-gray-400">Loading releases...</div>
@@ -33,7 +85,7 @@ export function ReleasesPage() {
           <Rocket size={18} className="text-indigo-600" />
           <h1 className="text-lg font-semibold text-gray-900">Releases</h1>
         </div>
-        <p className="text-sm text-gray-500">{released.length} released items &middot; track what marketing needs to message</p>
+        <p className="text-sm text-gray-500">{filtered.length} released items &middot; track what marketing needs to message</p>
       </div>
 
       {/* Filters */}
@@ -75,45 +127,45 @@ export function ReleasesPage() {
 
       {/* List */}
       <div className="flex-1 overflow-y-auto">
-        {released.length === 0 ? (
+        {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-gray-400">
             <Rocket size={32} className="mb-2 text-gray-300" />
             <p className="text-sm">No releases yet</p>
-            <p className="text-xs mt-1">Mark ideas as "Done" or "Released" to see them here</p>
+            <p className="text-xs mt-1">Mark roadmap bars as "Complete" to see them here</p>
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
-            {released.map(idea => (
-              <div key={idea.id} className="px-6 py-4 hover:bg-gray-50 transition-colors">
+            {filtered.map(item => (
+              <div key={item.id} className="px-6 py-4 hover:bg-gray-50 transition-colors">
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-sm font-semibold text-gray-900 truncate">{idea.title}</h3>
+                      <h3 className="text-sm font-semibold text-gray-900 truncate">{item.title}</h3>
                       <span className={[
                         'text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0',
-                        idea.status === 'released'
+                        item.status === 'released'
                           ? 'bg-emerald-50 text-emerald-700'
                           : 'bg-green-50 text-green-600',
                       ].join(' ')}>
-                        {idea.status === 'released' ? 'Released' : 'Done'}
+                        {item.status === 'released' ? 'Released' : 'Done'}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-500 truncate max-w-xl">{idea.description}</p>
+                    <p className="text-xs text-gray-500 truncate max-w-xl">{item.description}</p>
                     <div className="flex items-center gap-3 mt-2">
-                      {idea.productId && (
+                      {item.productId && (
                         <span className="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
-                          {productMap.get(idea.productId) ?? 'Unknown'}
+                          {productMap.get(item.productId) ?? 'Unknown'}
                         </span>
                       )}
-                      {idea.requester && (
-                        <span className="text-xs text-gray-400">Requester: {idea.requester}</span>
+                      {item.requester && (
+                        <span className="text-xs text-gray-400">Requester: {item.requester}</span>
                       )}
-                      {idea.arr != null && (
-                        <span className="text-xs text-gray-400">ARR: ${idea.arr.toLocaleString()}</span>
+                      {item.arr != null && (
+                        <span className="text-xs text-gray-400">ARR: ${item.arr.toLocaleString()}</span>
                       )}
-                      {idea.tags.length > 0 && (
+                      {item.tags.length > 0 && (
                         <div className="flex gap-1">
-                          {idea.tags.map(t => (
+                          {item.tags.map(t => (
                             <span key={t} className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">{t}</span>
                           ))}
                         </div>
@@ -122,7 +174,7 @@ export function ReleasesPage() {
                   </div>
                   <div className="text-right flex-shrink-0 ml-4">
                     <div className="text-xs text-gray-400">
-                      {new Date(idea.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      {new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </div>
                   </div>
                 </div>
