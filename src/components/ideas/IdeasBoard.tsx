@@ -431,7 +431,7 @@ export function IdeasBoard() {
                                 <button
                                   key={t.id}
                                   onClick={async () => {
-                                    const bar = await createRoadmapBar({ title: idea.title, description: idea.description, is_parked: true, theme_id: t.id })
+                                    const bar = await createRoadmapBar({ title: idea.title, description: idea.description, is_parked: false, theme_id: t.id })
                                     await updateIdea(idea.id, { linked_bar_id: bar.id, status: 'planned' })
                                     setRoadmapPickerIdea(null)
                                     queryClient.invalidateQueries({ queryKey: ['ideas'] })
@@ -445,7 +445,7 @@ export function IdeasBoard() {
                               ))}
                               <button
                                 onClick={async () => {
-                                  const bar = await createRoadmapBar({ title: idea.title, description: idea.description, is_parked: true })
+                                  const bar = await createRoadmapBar({ title: idea.title, description: idea.description, is_parked: false })
                                   await updateIdea(idea.id, { linked_bar_id: bar.id, status: 'planned' })
                                   setRoadmapPickerIdea(null)
                                   queryClient.invalidateQueries({ queryKey: ['ideas'] })
