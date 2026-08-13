@@ -1,8 +1,8 @@
 import { useState, useRef } from 'react'
 import { Plus, ChevronRight, ChevronDown, Trash2, X } from 'lucide-react'
-import { useThemes, useRoadmapBars } from '../../lib/hooks'
-import { updateRoadmapBar, createTheme, deleteTheme } from '../../lib/api'
-import type { RoadmapBar, Theme } from '../../models'
+import { useThemes, useRoadmapBars, useIdeas } from '../../lib/hooks'
+import { updateRoadmapBar, createTheme, deleteTheme, updateIdea } from '../../lib/api'
+import type { RoadmapBar, Theme, Idea } from '../../models'
 import { useQueryClient } from '@tanstack/react-query'
 
 const MONTH_WIDTH = 140 // px per month
@@ -70,10 +70,11 @@ function BarItem({ bar, startMonth, onClick, selected }: BarProps) {
 interface BarDetailProps {
   bar: RoadmapBar
   themes: Theme[]
+  ideas: Idea[]
   onClose: () => void
 }
 
-function BarDetail({ bar, themes, onClose }: BarDetailProps) {
+function BarDetail({ bar, themes, ideas, onClose }: BarDetailProps) {
   const queryClient = useQueryClient()
   return (
     <div className="w-72 border-l border-gray-200 bg-white overflow-y-auto flex-shrink-0">
@@ -136,7 +137,14 @@ function BarDetail({ bar, themes, onClose }: BarDetailProps) {
               const status = e.target.value
               const percent = status === 'complete' ? 100 : status === 'in_progress' ? Math.max(bar.percentComplete, 1) : 0
               await updateRoadmapBar(bar.id, { percent_complete: percent })
+              const linkedIdea = ideas.find(i => i.linkedBarId === bar.id)
+              if (linkedIdea) {
+                const ideaStatus = status === 'complete' ? 'done' : status === 'in_progress' ? 'in_progress' : 'planned'
+                await updateIdea(linkedIdea.id, { status: ideaStatus })
+                queryClient.invalidateQueries({ queryKey: ['ideas'] })
+              }
               queryClient.invalidateQueries({ queryKey: ['roadmapBars'] })
+              if (status === 'complete') onClose()
             }}
             className={[
               'text-xs font-medium px-2 py-1 rounded-md border-none cursor-pointer',
@@ -158,6 +166,7 @@ function BarDetail({ bar, themes, onClose }: BarDetailProps) {
 export function RoadmapTimeline() {
   const { data: themes = [], isLoading: themesLoading } = useThemes()
   const { data: roadmapBars = [], isLoading: barsLoading } = useRoadmapBars()
+  const { data: ideas = [] } = useIdeas()
 
   const queryClient = useQueryClient()
   const [collapsedThemes, setCollapsedThemes] = useState<Set<string>>(new Set())
@@ -185,7 +194,7 @@ export function RoadmapTimeline() {
   }
 
   const parkedBars = roadmapBars.filter(b => b.isParked)
-  const activeBars = roadmapBars.filter(b => !b.isParked)
+  const activeBars = roadmapBars.filter(b => !b.isParked && b.percentComplete < 100)
 
   if (themesLoading || barsLoading) {
     return <div className="flex items-center justify-center h-full text-gray-400">Loading roadmap…</div>
@@ -484,7 +493,7 @@ export function RoadmapTimeline() {
       </div>
 
       {selectedBar && (
-        <BarDetail bar={selectedBar} themes={themes} onClose={() => setSelectedBar(null)} />
+        <BarDetail bar={selectedBar} themes={themes} ideas={ideas} onClose={() => setSelectedBar(null)} />
       )}
     </div>
   )
