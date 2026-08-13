@@ -183,7 +183,7 @@ export function RoadmapTimeline() {
     return d
   })
   const totalWidth = months.length * MONTH_WIDTH
-  const LEFT_LABEL = 200
+  const LEFT_LABEL = 280
 
   const toggleTheme = (themeId: string) => {
     setCollapsedThemes(prev => {
@@ -375,7 +375,7 @@ export function RoadmapTimeline() {
                         style={{ width: LEFT_LABEL, borderRight: '1px solid #e5e7eb' }}
                       >
                         <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: theme.color }} />
-                        <span className="text-xs font-bold text-gray-700 uppercase tracking-wide truncate">{theme.name}</span>
+                        <span className="text-sm font-semibold text-gray-700 truncate" title={theme.name}>{theme.name}</span>
                         <button
                           onClick={async e => {
                             e.stopPropagation()
