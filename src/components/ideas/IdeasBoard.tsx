@@ -200,6 +200,7 @@ export function IdeasBoard() {
   const productMap = new Map(products.map(p => [p.id, p.name]))
 
   const filtered = ideas
+    .filter(i => i.status !== 'done' && i.status !== 'released')
     .filter(i => filterStatus === 'all' || i.status === filterStatus)
     .filter(i => filterProduct === 'all' || i.productId === filterProduct)
     .sort((a, b) => {
@@ -238,7 +239,7 @@ export function IdeasBoard() {
           <div className="flex items-center gap-2">
             <span className="text-xs text-gray-500 font-medium">Status:</span>
             <div className="flex gap-1">
-              {(['all', 'backlog', 'planned', 'in_progress', 'done', 'released'] as const).map(s => (
+              {(['all', 'backlog', 'planned', 'in_progress'] as const).map(s => (
                 <button
                   key={s}
                   onClick={() => setFilterStatus(s)}
