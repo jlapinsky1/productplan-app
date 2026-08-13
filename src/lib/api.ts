@@ -64,6 +64,17 @@ export async function fetchProducts(): Promise<Product[]> {
   return (data ?? []).map(p => ({ id: p.id, name: p.name }))
 }
 
+export async function createProduct(name: string): Promise<Product> {
+  const { data, error } = await supabase
+    .from('pp_products')
+    .insert({ name, company_id: COMPANY_ID })
+    .select('id, name')
+    .single()
+
+  if (error || !data) throw new Error(error?.message ?? 'Failed to create product')
+  return { id: data.id, name: data.name }
+}
+
 // ---- Idea mutations ----
 
 export async function updateIdeaTags(ideaId: string, tags: string[]): Promise<void> {

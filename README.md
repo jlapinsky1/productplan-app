@@ -9,6 +9,8 @@ A product management platform for capturing ideas, planning roadmaps, tracking s
 - **Idea backlog** with table view showing title, status, tags, requester, votes, and priority score
 - **Filter by status:** All, Backlog, Planned, In Progress, Done
 - **Filter by product** to scope ideas to a specific product area
+- **Add new products** inline via the "+" button next to the product filter
+- **Assign/change product** on any idea from the detail panel dropdown
 - **Sort by:** Priority Score, Votes, or Date Added
 - **Weighted prioritization scoring** — rate each idea across five dimensions:
   - _Benefit:_ Revenue Potential (3x), Customer Delight (2x), Strategic Value (2x)
@@ -83,4 +85,4 @@ npm run dev
 
 ## Data
 
-All data is live from Supabase. Tables are prefixed `pp_` (e.g., `pp_ideas`, `pp_roadmap_bars`, `pp_objectives`, `pp_initiatives`). Company ID: `00000000-0000-0000-0000-000000000001`.
+All data is live from Supabase. Tables are prefixed `pp_` (e.g., `pp_ideas`, `pp_products`, `pp_roadmap_bars`, `pp_objectives`, `pp_initiatives`). Company ID: `00000000-0000-0000-0000-000000000001`.

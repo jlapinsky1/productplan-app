@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ThumbsUp, Plus, ChevronDown, Tag, ArrowRight, X } from 'lucide-react'
 import { useIdeas, usePriorityColumns, useProducts } from '../../lib/hooks'
-import { updateIdeaTags, updateIdea, upsertScore } from '../../lib/api'
+import { updateIdeaTags, updateIdea, upsertScore, createProduct } from '../../lib/api'
 import { computeScore } from './PrioritizationBoard'
 import { PrioritizationBoard } from './PrioritizationBoard'
 import type { Idea, IdeaStatus } from '../../models'
@@ -190,6 +190,8 @@ export function IdeasBoard() {
   const [selectedIdea, setSelectedIdea] = useState<Idea | null>(null)
   const [filterStatus, setFilterStatus] = useState<IdeaStatus | 'all'>('all')
   const [filterProduct, setFilterProduct] = useState<string>('all')
+  const [addingProduct, setAddingProduct] = useState(false)
+  const [newProductName, setNewProductName] = useState('')
   const [sortBy, setSortBy] = useState<'score' | 'votes' | 'date'>('score')
 
   const productMap = new Map(products.map(p => [p.id, p.name]))
@@ -250,21 +252,53 @@ export function IdeasBoard() {
             </div>
           </div>
 
-          {products.length > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-500 font-medium">Product:</span>
-              <select
-                value={filterProduct}
-                onChange={e => setFilterProduct(e.target.value)}
-                className="text-xs border border-gray-200 rounded-lg px-2 py-1 text-gray-700 bg-white"
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500 font-medium">Product:</span>
+            <select
+              value={filterProduct}
+              onChange={e => setFilterProduct(e.target.value)}
+              className="text-xs border border-gray-200 rounded-lg px-2 py-1 text-gray-700 bg-white"
+            >
+              <option value="all">All Products</option>
+              {products.map(p => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+            {addingProduct ? (
+              <form
+                className="flex items-center gap-1"
+                onSubmit={async e => {
+                  e.preventDefault()
+                  const name = newProductName.trim()
+                  if (!name) return
+                  await createProduct(name)
+                  await queryClient.invalidateQueries({ queryKey: ['products'] })
+                  setNewProductName('')
+                  setAddingProduct(false)
+                }}
               >
-                <option value="all">All Products</option>
-                {products.map(p => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
+                <input
+                  autoFocus
+                  value={newProductName}
+                  onChange={e => setNewProductName(e.target.value)}
+                  placeholder="Product name"
+                  className="text-xs border border-gray-300 rounded px-2 py-1 w-32"
+                />
+                <button type="submit" className="text-xs text-white bg-indigo-600 rounded px-2 py-1 hover:bg-indigo-700">Add</button>
+                <button type="button" onClick={() => { setAddingProduct(false); setNewProductName('') }} className="text-xs text-gray-500 hover:text-gray-700">
+                  <X size={14} />
+                </button>
+              </form>
+            ) : (
+              <button
+                onClick={() => setAddingProduct(true)}
+                className="text-xs text-indigo-600 hover:text-indigo-800 flex items-center gap-0.5"
+                title="Add product"
+              >
+                <Plus size={14} />
+              </button>
+            )}
+          </div>
 
           <div className="ml-auto flex items-center gap-2">
             <span className="text-xs text-gray-500">Sort by:</span>
@@ -395,11 +429,20 @@ export function IdeasBoard() {
             </div>
             <div className="flex items-center gap-2 mt-1">
               <StatusBadge status={freshSelected.status} />
-              {freshSelected.productId && (
-                <span className="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
-                  {productMap.get(freshSelected.productId) ?? ''}
-                </span>
-              )}
+              <select
+                value={freshSelected.productId ?? ''}
+                onChange={async e => {
+                  const val = e.target.value || null
+                  await updateIdea(freshSelected.id, { product_id: val })
+                  queryClient.invalidateQueries({ queryKey: ['ideas'] })
+                }}
+                className="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full border-none cursor-pointer"
+              >
+                <option value="">No product</option>
+                {products.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
             </div>
           </div>
           <div className="p-4 space-y-4">
