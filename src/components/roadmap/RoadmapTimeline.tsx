@@ -1,7 +1,9 @@
 import { useState, useRef } from 'react'
-import { Plus, ChevronRight, ChevronDown } from 'lucide-react'
+import { Plus, ChevronRight, ChevronDown, Trash2, X } from 'lucide-react'
 import { useThemes, useRoadmapBars } from '../../lib/hooks'
-import type { RoadmapBar } from '../../models'
+import { updateRoadmapBar, createTheme, deleteTheme } from '../../lib/api'
+import type { RoadmapBar, Theme } from '../../models'
+import { useQueryClient } from '@tanstack/react-query'
 
 const MONTH_WIDTH = 140 // px per month
 const LANE_HEIGHT = 44  // px per bar row
@@ -67,10 +69,12 @@ function BarItem({ bar, startMonth, onClick, selected }: BarProps) {
 
 interface BarDetailProps {
   bar: RoadmapBar
+  themes: Theme[]
   onClose: () => void
 }
 
-function BarDetail({ bar, onClose }: BarDetailProps) {
+function BarDetail({ bar, themes, onClose }: BarDetailProps) {
+  const queryClient = useQueryClient()
   return (
     <div className="w-72 border-l border-gray-200 bg-white overflow-y-auto flex-shrink-0">
       <div className="px-4 py-4 border-b border-gray-100 flex items-start justify-between">
@@ -83,6 +87,23 @@ function BarDetail({ bar, onClose }: BarDetailProps) {
         <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg">×</button>
       </div>
       <div className="p-4 space-y-4">
+        <div>
+          <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Theme</div>
+          <select
+            value={bar.themeId ?? ''}
+            onChange={async e => {
+              const val = e.target.value || null
+              await updateRoadmapBar(bar.id, { theme_id: val })
+              queryClient.invalidateQueries({ queryKey: ['roadmapBars'] })
+            }}
+            className="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md border-none cursor-pointer w-full"
+          >
+            <option value="">No theme</option>
+            {themes.map(t => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
+        </div>
         <div>
           <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Description</div>
           <p className="text-sm text-gray-600">{bar.description}</p>
@@ -124,9 +145,12 @@ export function RoadmapTimeline() {
   const { data: themes = [], isLoading: themesLoading } = useThemes()
   const { data: roadmapBars = [], isLoading: barsLoading } = useRoadmapBars()
 
+  const queryClient = useQueryClient()
   const [collapsedThemes, setCollapsedThemes] = useState<Set<string>>(new Set())
   const [selectedBar, setSelectedBar] = useState<RoadmapBar | null>(null)
   const [activeView, setActiveView] = useState<'timeline' | 'parked'>('timeline')
+  const [addingTheme, setAddingTheme] = useState(false)
+  const [newThemeName, setNewThemeName] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const startMonth = new Date('2026-04-01')
@@ -180,6 +204,39 @@ export function RoadmapTimeline() {
                 </button>
               ))}
             </div>
+            {addingTheme ? (
+              <form
+                className="flex items-center gap-1.5"
+                onSubmit={async e => {
+                  e.preventDefault()
+                  const name = newThemeName.trim()
+                  if (!name) return
+                  await createTheme(name)
+                  queryClient.invalidateQueries({ queryKey: ['themes'] })
+                  setNewThemeName('')
+                  setAddingTheme(false)
+                }}
+              >
+                <input
+                  autoFocus
+                  value={newThemeName}
+                  onChange={e => setNewThemeName(e.target.value)}
+                  placeholder="Theme name"
+                  className="text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 w-40 focus:outline-none focus:border-indigo-400"
+                />
+                <button type="submit" className="px-2.5 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700">Add</button>
+                <button type="button" onClick={() => { setAddingTheme(false); setNewThemeName('') }} className="text-gray-400 hover:text-gray-600">
+                  <X size={16} />
+                </button>
+              </form>
+            ) : (
+              <button
+                onClick={() => setAddingTheme(true)}
+                className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50"
+              >
+                <Plus size={14} /> Add Theme
+              </button>
+            )}
             <button className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700">
               <Plus size={14} /> Add Bar
             </button>
@@ -290,7 +347,23 @@ export function RoadmapTimeline() {
                       >
                         <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: theme.color }} />
                         <span className="text-xs font-bold text-gray-700 uppercase tracking-wide truncate">{theme.name}</span>
-                        {collapsed ? <ChevronRight size={12} className="ml-auto text-gray-400" /> : <ChevronDown size={12} className="ml-auto text-gray-400" />}
+                        <button
+                          onClick={async e => {
+                            e.stopPropagation()
+                            if (!confirm(`Delete theme "${theme.name}"? Bars assigned to it will become unassigned.`)) return
+                            await deleteTheme(theme.id)
+                            // Unassign bars from this theme
+                            const barsInTheme = roadmapBars.filter(b => b.themeId === theme.id)
+                            await Promise.all(barsInTheme.map(b => updateRoadmapBar(b.id, { theme_id: null })))
+                            queryClient.invalidateQueries({ queryKey: ['themes'] })
+                            queryClient.invalidateQueries({ queryKey: ['roadmapBars'] })
+                          }}
+                          className="ml-auto text-gray-300 hover:text-red-500 transition-colors"
+                          title="Delete theme"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                        {collapsed ? <ChevronRight size={12} className="text-gray-400" /> : <ChevronDown size={12} className="text-gray-400" />}
                       </div>
                       <div className="flex-1" />
                     </div>
@@ -391,7 +464,7 @@ export function RoadmapTimeline() {
       </div>
 
       {selectedBar && (
-        <BarDetail bar={selectedBar} onClose={() => setSelectedBar(null)} />
+        <BarDetail bar={selectedBar} themes={themes} onClose={() => setSelectedBar(null)} />
       )}
     </div>
   )

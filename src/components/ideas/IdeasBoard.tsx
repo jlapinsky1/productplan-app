@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ThumbsUp, Plus, ChevronDown, Tag, ArrowRight, X } from 'lucide-react'
-import { useIdeas, usePriorityColumns, useProducts } from '../../lib/hooks'
-import { updateIdeaTags, updateIdea, upsertScore, createProduct } from '../../lib/api'
+import { useIdeas, usePriorityColumns, useProducts, useThemes } from '../../lib/hooks'
+import { updateIdeaTags, updateIdea, upsertScore, createProduct, createRoadmapBar } from '../../lib/api'
 import { computeScore } from './PrioritizationBoard'
 import { PrioritizationBoard } from './PrioritizationBoard'
 import type { Idea, IdeaStatus } from '../../models'
@@ -12,6 +12,7 @@ const STATUS_CONFIG: Record<IdeaStatus, { label: string; color: string; bg: stri
   planned: { label: 'Planned', color: 'text-blue-600', bg: 'bg-blue-50' },
   in_progress: { label: 'In Progress', color: 'text-indigo-600', bg: 'bg-indigo-50' },
   done: { label: 'Done', color: 'text-green-600', bg: 'bg-green-50' },
+  released: { label: 'Released', color: 'text-emerald-700', bg: 'bg-emerald-50' },
 }
 
 function StatusBadge({ status }: { status: IdeaStatus }) {
@@ -186,6 +187,7 @@ export function IdeasBoard() {
   const { data: ideas = [], isLoading } = useIdeas()
   const { data: priorityColumns = [] } = usePriorityColumns()
   const { data: products = [] } = useProducts()
+  const { data: themes = [] } = useThemes()
   const queryClient = useQueryClient()
   const [selectedIdea, setSelectedIdea] = useState<Idea | null>(null)
   const [filterStatus, setFilterStatus] = useState<IdeaStatus | 'all'>('all')
@@ -193,6 +195,7 @@ export function IdeasBoard() {
   const [addingProduct, setAddingProduct] = useState(false)
   const [newProductName, setNewProductName] = useState('')
   const [sortBy, setSortBy] = useState<'score' | 'votes' | 'date'>('score')
+  const [roadmapPickerIdea, setRoadmapPickerIdea] = useState<string | null>(null)
 
   const productMap = new Map(products.map(p => [p.id, p.name]))
 
@@ -235,7 +238,7 @@ export function IdeasBoard() {
           <div className="flex items-center gap-2">
             <span className="text-xs text-gray-500 font-medium">Status:</span>
             <div className="flex gap-1">
-              {(['all', 'backlog', 'planned', 'in_progress', 'done'] as const).map(s => (
+              {(['all', 'backlog', 'planned', 'in_progress', 'done', 'released'] as const).map(s => (
                 <button
                   key={s}
                   onClick={() => setFilterStatus(s)}
@@ -397,12 +400,53 @@ export function IdeasBoard() {
                           <ArrowRight size={10} /> On Roadmap
                         </span>
                       ) : (
-                        <button
-                          onClick={e => { e.stopPropagation() }}
-                          className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
-                        >
-                          → Roadmap
-                        </button>
+                        <div className="relative">
+                          <button
+                            onClick={e => {
+                              e.stopPropagation()
+                              setRoadmapPickerIdea(roadmapPickerIdea === idea.id ? null : idea.id)
+                            }}
+                            className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+                          >
+                            → Roadmap
+                          </button>
+                          {roadmapPickerIdea === idea.id && (
+                            <div
+                              className="absolute right-0 top-6 z-20 bg-white border border-gray-200 rounded-lg shadow-lg py-1 w-52"
+                              onClick={e => e.stopPropagation()}
+                            >
+                              <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Select Theme</div>
+                              {themes.map(t => (
+                                <button
+                                  key={t.id}
+                                  onClick={async () => {
+                                    const bar = await createRoadmapBar({ title: idea.title, description: idea.description, is_parked: true, theme_id: t.id })
+                                    await updateIdea(idea.id, { linked_bar_id: bar.id, status: 'planned' })
+                                    setRoadmapPickerIdea(null)
+                                    queryClient.invalidateQueries({ queryKey: ['ideas'] })
+                                    queryClient.invalidateQueries({ queryKey: ['roadmapBars'] })
+                                  }}
+                                  className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-indigo-50 flex items-center gap-2"
+                                >
+                                  <div className="w-2 h-2 rounded-sm flex-shrink-0" style={{ background: t.color }} />
+                                  {t.name}
+                                </button>
+                              ))}
+                              <button
+                                onClick={async () => {
+                                  const bar = await createRoadmapBar({ title: idea.title, description: idea.description, is_parked: true })
+                                  await updateIdea(idea.id, { linked_bar_id: bar.id, status: 'planned' })
+                                  setRoadmapPickerIdea(null)
+                                  queryClient.invalidateQueries({ queryKey: ['ideas'] })
+                                  queryClient.invalidateQueries({ queryKey: ['roadmapBars'] })
+                                }}
+                                className="w-full text-left px-3 py-1.5 text-xs text-gray-500 hover:bg-gray-50 border-t border-gray-100"
+                              >
+                                No theme
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -428,7 +472,18 @@ export function IdeasBoard() {
               </button>
             </div>
             <div className="flex items-center gap-2 mt-1">
-              <StatusBadge status={freshSelected.status} />
+              <select
+                value={freshSelected.status}
+                onChange={async e => {
+                  await updateIdea(freshSelected.id, { status: e.target.value })
+                  queryClient.invalidateQueries({ queryKey: ['ideas'] })
+                }}
+                className={`text-xs font-medium px-2 py-0.5 rounded-full border-none cursor-pointer ${STATUS_CONFIG[freshSelected.status].bg} ${STATUS_CONFIG[freshSelected.status].color}`}
+              >
+                {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
+                  <option key={key} value={key}>{cfg.label}</option>
+                ))}
+              </select>
               <select
                 value={freshSelected.productId ?? ''}
                 onChange={async e => {

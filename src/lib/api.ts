@@ -133,6 +133,24 @@ export async function fetchThemes(): Promise<Theme[]> {
   }))
 }
 
+export async function createTheme(name: string): Promise<Theme> {
+  const { data, error } = await supabase
+    .from('pp_strategic_themes')
+    .insert({ name, company_id: COMPANY_ID, active: true })
+    .select('*')
+    .single()
+
+  if (error || !data) throw new Error(error?.message ?? 'Failed to create theme')
+  return { id: data.id, name: data.name, color: '#6366f1', sortOrder: 0 }
+}
+
+export async function deleteTheme(themeId: string): Promise<void> {
+  await supabase
+    .from('pp_strategic_themes')
+    .update({ active: false })
+    .eq('id', themeId)
+}
+
 // ---- Roadmap Bars ----
 
 export async function fetchRoadmapBars(): Promise<RoadmapBar[]> {
@@ -157,6 +175,48 @@ export async function fetchRoadmapBars(): Promise<RoadmapBar[]> {
     linkedObjectiveIds: b.linked_objective_ids ?? [],
     createdAt: b.created_at,
   }))
+}
+
+export async function updateRoadmapBar(barId: string, fields: Record<string, unknown>): Promise<void> {
+  await supabase
+    .from('pp_roadmap_bars')
+    .update(fields)
+    .eq('id', barId)
+}
+
+export async function createRoadmapBar(fields: { title: string; description?: string; is_parked?: boolean; theme_id?: string }): Promise<RoadmapBar> {
+  const today = new Date().toISOString().slice(0, 10)
+  const nextMonth = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10)
+  const { data, error } = await supabase
+    .from('pp_roadmap_bars')
+    .insert({
+      company_id: COMPANY_ID,
+      title: fields.title,
+      description: fields.description ?? '',
+      start_date: today,
+      end_date: nextMonth,
+      is_parked: fields.is_parked ?? true,
+      ...fields,
+    })
+    .select('*')
+    .single()
+
+  if (error || !data) throw new Error(error?.message ?? 'Failed to create roadmap bar')
+  return {
+    id: data.id,
+    containerId: undefined,
+    themeId: data.theme_id ?? undefined,
+    title: data.title,
+    description: data.description ?? '',
+    startDate: data.start_date ?? '',
+    endDate: data.end_date ?? '',
+    color: data.color ?? '#6366f1',
+    percentComplete: data.percent_complete ?? 0,
+    tags: data.tags ?? [],
+    isParked: data.is_parked ?? false,
+    linkedObjectiveIds: data.linked_objective_ids ?? [],
+    createdAt: data.created_at,
+  }
 }
 
 // ---- Objectives + Key Results ----

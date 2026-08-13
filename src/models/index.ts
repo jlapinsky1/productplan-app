@@ -1,4 +1,4 @@
-export type IdeaStatus = 'backlog' | 'planned' | 'in_progress' | 'done'
+export type IdeaStatus = 'backlog' | 'planned' | 'in_progress' | 'done' | 'released'
 export type ObjectiveScope = 'company' | 'team'
 export type RagStatus = 'red' | 'amber' | 'green'
 export type BarStatus = 'planned' | 'in_progress' | 'complete'
