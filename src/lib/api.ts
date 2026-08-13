@@ -196,7 +196,7 @@ export async function createRoadmapBar(fields: { title: string; description?: st
       start_date: today,
       end_date: nextMonth,
       is_parked: fields.is_parked ?? true,
-      ...fields,
+      theme_id: fields.theme_id ?? null,
     })
     .select('*')
     .single()

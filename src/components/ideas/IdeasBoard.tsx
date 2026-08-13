@@ -412,7 +412,18 @@ export function IdeasBoard() {
                           </button>
                           {roadmapPickerIdea === idea.id && (
                             <div
-                              className="absolute right-0 top-6 z-20 bg-white border border-gray-200 rounded-lg shadow-lg py-1 w-52"
+                              className="fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg py-1 w-52"
+                              style={{ marginTop: 4 }}
+                              ref={el => {
+                                if (el) {
+                                  const btn = el.parentElement?.querySelector('button')
+                                  if (btn) {
+                                    const rect = btn.getBoundingClientRect()
+                                    el.style.top = `${rect.bottom + 4}px`
+                                    el.style.left = `${rect.right - el.offsetWidth}px`
+                                  }
+                                }
+                              }}
                               onClick={e => e.stopPropagation()}
                             >
                               <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Select Theme</div>
