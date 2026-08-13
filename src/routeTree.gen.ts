@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as StrategyIndexRouteImport } from './routes/strategy/index'
 import { Route as RoadmapIndexRouteImport } from './routes/roadmap/index'
+import { Route as ReleasesIndexRouteImport } from './routes/releases/index'
 import { Route as PortfolioIndexRouteImport } from './routes/portfolio/index'
 import { Route as IdeasIndexRouteImport } from './routes/ideas/index'
 
@@ -30,6 +31,11 @@ const RoadmapIndexRoute = RoadmapIndexRouteImport.update({
   path: '/roadmap/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReleasesIndexRoute = ReleasesIndexRouteImport.update({
+  id: '/releases/',
+  path: '/releases/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PortfolioIndexRoute = PortfolioIndexRouteImport.update({
   id: '/portfolio/',
   path: '/portfolio/',
@@ -45,6 +51,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/ideas/': typeof IdeasIndexRoute
   '/portfolio/': typeof PortfolioIndexRoute
+  '/releases/': typeof ReleasesIndexRoute
   '/roadmap/': typeof RoadmapIndexRoute
   '/strategy/': typeof StrategyIndexRoute
 }
@@ -52,6 +59,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/ideas': typeof IdeasIndexRoute
   '/portfolio': typeof PortfolioIndexRoute
+  '/releases': typeof ReleasesIndexRoute
   '/roadmap': typeof RoadmapIndexRoute
   '/strategy': typeof StrategyIndexRoute
 }
@@ -60,21 +68,36 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/ideas/': typeof IdeasIndexRoute
   '/portfolio/': typeof PortfolioIndexRoute
+  '/releases/': typeof ReleasesIndexRoute
   '/roadmap/': typeof RoadmapIndexRoute
   '/strategy/': typeof StrategyIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/ideas/' | '/portfolio/' | '/roadmap/' | '/strategy/'
+  fullPaths:
+    | '/'
+    | '/ideas/'
+    | '/portfolio/'
+    | '/releases/'
+    | '/roadmap/'
+    | '/strategy/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/ideas' | '/portfolio' | '/roadmap' | '/strategy'
-  id: '__root__' | '/' | '/ideas/' | '/portfolio/' | '/roadmap/' | '/strategy/'
+  to: '/' | '/ideas' | '/portfolio' | '/releases' | '/roadmap' | '/strategy'
+  id:
+    | '__root__'
+    | '/'
+    | '/ideas/'
+    | '/portfolio/'
+    | '/releases/'
+    | '/roadmap/'
+    | '/strategy/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   IdeasIndexRoute: typeof IdeasIndexRoute
   PortfolioIndexRoute: typeof PortfolioIndexRoute
+  ReleasesIndexRoute: typeof ReleasesIndexRoute
   RoadmapIndexRoute: typeof RoadmapIndexRoute
   StrategyIndexRoute: typeof StrategyIndexRoute
 }
@@ -102,6 +125,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RoadmapIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/releases/': {
+      id: '/releases/'
+      path: '/releases'
+      fullPath: '/releases/'
+      preLoaderRoute: typeof ReleasesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/portfolio/': {
       id: '/portfolio/'
       path: '/portfolio'
@@ -123,6 +153,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   IdeasIndexRoute: IdeasIndexRoute,
   PortfolioIndexRoute: PortfolioIndexRoute,
+  ReleasesIndexRoute: ReleasesIndexRoute,
   RoadmapIndexRoute: RoadmapIndexRoute,
   StrategyIndexRoute: StrategyIndexRoute,
 }

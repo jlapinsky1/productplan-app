@@ -1,9 +1,10 @@
 import { Link, useRouterState } from '@tanstack/react-router'
-import { Lightbulb, Map, Target, BarChart3 } from 'lucide-react'
+import { Lightbulb, Map, Target, BarChart3, Rocket } from 'lucide-react'
 
 const navItems = [
   { to: '/ideas', label: 'Ideas', icon: Lightbulb, description: 'Capture & prioritize' },
   { to: '/roadmap', label: 'Roadmap', icon: Map, description: 'Visual timeline' },
+  { to: '/releases', label: 'Releases', icon: Rocket, description: 'Shipped & messaging' },
   { to: '/strategy', label: 'Strategy', icon: Target, description: 'Objectives & KRs' },
   { to: '/portfolio', label: 'Portfolio', icon: BarChart3, description: 'Strategic overview' },
 ]

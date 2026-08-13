@@ -127,14 +127,28 @@ function BarDetail({ bar, themes, onClose }: BarDetailProps) {
         </div>
         <div>
           <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Status</div>
-          <span className={[
-            'text-xs font-medium px-2 py-0.5 rounded-full',
-            bar.percentComplete === 100 ? 'bg-green-100 text-green-700' :
-            bar.percentComplete > 0 ? 'bg-indigo-100 text-indigo-700' :
-            'bg-gray-100 text-gray-600',
-          ].join(' ')}>
-            {bar.percentComplete === 100 ? 'Complete' : bar.percentComplete > 0 ? 'In Progress' : 'Planned'}
-          </span>
+          <select
+            value={
+              bar.percentComplete === 100 ? 'complete' :
+              bar.percentComplete > 0 ? 'in_progress' : 'planned'
+            }
+            onChange={async e => {
+              const status = e.target.value
+              const percent = status === 'complete' ? 100 : status === 'in_progress' ? Math.max(bar.percentComplete, 1) : 0
+              await updateRoadmapBar(bar.id, { percent_complete: percent })
+              queryClient.invalidateQueries({ queryKey: ['roadmapBars'] })
+            }}
+            className={[
+              'text-xs font-medium px-2 py-1 rounded-md border-none cursor-pointer',
+              bar.percentComplete === 100 ? 'bg-green-100 text-green-700' :
+              bar.percentComplete > 0 ? 'bg-indigo-100 text-indigo-700' :
+              'bg-gray-100 text-gray-600',
+            ].join(' ')}
+          >
+            <option value="planned">Planned</option>
+            <option value="in_progress">In Progress</option>
+            <option value="complete">Complete</option>
+          </select>
         </div>
       </div>
     </div>
