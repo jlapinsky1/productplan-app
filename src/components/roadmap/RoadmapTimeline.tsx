@@ -276,7 +276,13 @@ export function RoadmapTimeline() {
                       </div>
                     </td>
                     <td className="px-6 py-3 text-right">
-                      <button className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">
+                      <button
+                        onClick={async () => {
+                          await updateRoadmapBar(bar.id, { is_parked: false })
+                          queryClient.invalidateQueries({ queryKey: ['roadmapBars'] })
+                        }}
+                        className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+                      >
                         → Timeline
                       </button>
                     </td>
